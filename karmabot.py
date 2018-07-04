@@ -82,6 +82,10 @@ class Karmabot:
             if channel.startswith('D') and self._handle_dm_cmd(initiator_id, channel, text):
                 return True
 
+            # Don't handle requests from private channels (aka groups)
+            if channel.startswith('G'):
+                return False
+
             # Handle only messages with `@karmabot` at the beginning
             user_id = Parse.user_mention(text)
             if not user_id or self._config.TRANSPORT.lookup_username(user_id) != 'karmabot':
