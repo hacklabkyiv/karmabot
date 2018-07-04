@@ -1,13 +1,15 @@
-from enum import Enum
-
-
 _ = {
     'en': {
-        'hello_user': """Hi, @{}! I\'m *karmabot*. You can do `@karmabot @username +++` in any public channel. 
-If the community agrees, the username will get a karma. Nothing will happen in any other case.""",
-#############
-        'hello_channel': """Hi! I\'m *karmabot*. You can do `@karmabot @username +++` in any public channel. 
-If the most of you agree, the username will get a karma. *Holywar* will happen in any other case.""",
+        'hello': """Hi! I\'m *karmabot*. You can do: 
+- In any public channel 
+    `@karmabot @username +++ blah blah` 
+    If the most of you agree, the username will get a karma. Nothing will happen in any other case.
+
+- In direct messages with bot:
+    - `get @username` - get karma value for `username`
+    - `set @username <KARMA>` - set karma value for `username`
+    - `help` - show this message
+    - `config` - show config for this execution""",
 #############
         'new_voting': """{} *A new voting for {:+d} karma for user @{}*
  You can vote using emoji for that or initial message.
@@ -39,11 +41,17 @@ A request for karma change should be like `@karmabot @username +++ blah blah`"""
     },
 
     'ru': {
-        'hello_user': """Привет, @{}! Я *karmabot*. Ты можешь делать так `@karmabot @username +++` в любом публичном
- канале. Если сообщесво согласно, username получит свое. В любом другом случае ничего не случится .""",
-#############
-        'hello_channel': """Привет! Я *karmabot*. Вы можете делать так `@karmabot @username +++` в любом публичном канале. 
-Если большинство согласно, username получит свое. В любом другом случае начнется *холивар*.""",
+        'hello': """Привет! Я *karmabot*. Вы можете делать: 
+- В любом публичном канале:
+    `@karmabot @username +++ бла бла` 
+    Если большинство согласно, username получит свое. В любом другом случае ничего не случится.
+
+- В личных сообщениях с ботом:
+    - `get @username` - получить карму `username`
+    - `set @username <KARMA>` - установить новое значение кармы для `username`
+    - `help` - показать это сообщение
+    - `config` - показать конфиг для этого запуска
+""",
 #############
         'new_voting': """{} *Голосование за {:+d} кармы пользователю @{}* 
 Голосовать нужно при помощи emoji к этому или оригинальному сообщению.
@@ -77,6 +85,27 @@ _ПРОТИВ:_ {}
 
 MESSAGE = _['en']
 
+_INTERVALS = (604800,  # 60 * 60 * 24 * 7
+              86400,   # 60 * 60 * 24
+              3600,    # 60 * 60
+              60,
+              1)
+
+
+def display_time(seconds, granularity=4):
+    result = []
+
+    for i, count in enumerate(_INTERVALS):
+        value = seconds // count
+        if value:
+            seconds -= value * count
+            if value == 1:
+                name = MESSAGE['time'].get('one')[i]
+            else:
+                name = MESSAGE['time'].get('many')[i]
+            result.append("{} {}".format(value, name))
+    return ', '.join(result[:granularity])
+
 
 def init(lang):
     r = _.get(lang, None)
@@ -85,12 +114,12 @@ def init(lang):
         MESSAGE = r
 
 
-class Status(Enum):
+class Status:
     OPEN = ':hourglass_flowing_sand:'
     CLOSED = ':white_check_mark:'
 
 
-class Color(Enum):
+class Color:
     ERROR = '#FF0000'
     INFO = '#3AA3E3'
 
@@ -101,7 +130,7 @@ class Format:
         return {
             'attachments': [{
                 'mrkdwn_in': ['text'],
-                'color': color.value,
+                'color': color,
                 'attachment_type': 'default',
                 'callback_id': 'karma_voting',
                 "fallback": text,
@@ -111,16 +140,12 @@ class Format:
         }
 
     @staticmethod
-    def hello_user(username):
-        return Format.message(Color.INFO, MESSAGE['hello_user'].format(username))
-
-    @staticmethod
-    def hello_channel():
-        return Format.message(Color.INFO, MESSAGE['hello_channel'])
+    def hello():
+        return Format.message(Color.INFO, MESSAGE['hello'])
 
     @staticmethod
     def new_voting(username, karma, votes_up_emoji, votes_down_emoji, timeout):
-        text = MESSAGE['new_voting'].format(Status.OPEN.value,
+        text = MESSAGE['new_voting'].format(Status.OPEN,
                                             karma,
                                             username,
                                             ':' + ': :'.join(votes_up_emoji) + ':',
@@ -132,10 +157,10 @@ class Format:
     def voting_result(username, karma, success):
         if success:
             emoji = ':tada:' if karma > 0 else ':face_palm:'
-            text = MESSAGE['voting_result_success'].format(Status.CLOSED.value, username, karma, emoji)
+            text = MESSAGE['voting_result_success'].format(Status.CLOSED, username, karma, emoji)
         else:
             emoji = ':fidget_spinner:'
-            text = MESSAGE['voting_result_nothing'].format(Status.CLOSED.value, username, emoji)
+            text = MESSAGE['voting_result_nothing'].format(Status.CLOSED, username, emoji)
 
         return Format.message(Color.INFO, text)
 
@@ -162,25 +187,3 @@ class Format:
     @staticmethod
     def cmd_error():
         return Format.message(Color.ERROR, MESSAGE['cmd_error'], image='https://i.imgflip.com/2cuafm.jpg')
-
-
-_INTERVALS = (604800,  # 60 * 60 * 24 * 7
-              86400,   # 60 * 60 * 24
-              3600,    # 60 * 60
-              60,
-              1)
-
-
-def display_time(seconds, granularity=4):
-    result = []
-
-    for i, count in enumerate(_INTERVALS):
-        value = seconds // count
-        if value:
-            seconds -= value * count
-            if value == 1:
-                name = MESSAGE['time']['one'][i]
-            else:
-                name = MESSAGE['time']['many'][i]
-            result.append("{} {}".format(value, name))
-    return ', '.join(result[:granularity])

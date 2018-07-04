@@ -1,9 +1,10 @@
 import os
+import logging
+from transport import Transport
 
 
 class Config:
     def __init__(self):
-        self.BOT_EMOJI = os.environ.get('BOT_EMOJI', default=':robot_face:')
         self.BOT_LANG = os.environ.get('BOT_LANG', default='en')
         self.DB_URI = os.environ.get('DB_URI', default='sqlite:///karma.db')
         self.SLACK_BOT_TOKEN = os.environ.get('SLACK_BOT_TOKEN')
@@ -14,5 +15,14 @@ class Config:
         self.UPVOTE_EMOJI = os.environ.get('UPVOTE_EMOJI', default='+1,partyparrot,thumbsup,thumbsup_all')\
                                       .replace(',', ' ').split()
         self.DOWNVOTE_EMOJI = os.environ.get('DOWNVOTE_EMOJI', default='-1,thumbsdown').replace(',', ' ').split()
-        self.SELF_KARMA = os.environ.get('SELF_KARMA', default=False).lower() in ['true', '1', 'y', 'yes']
+        self.SELF_KARMA = os.environ.get('SELF_KARMA', default='false').lower() in ['true', '1', 'y', 'yes']
         self.ADMINS = os.environ.get('ADMINS').replace(',', ' ').split()
+
+        self.LOG_LEVEL = logging.getLevelName(os.environ.get('LOG_LEVEL', default='INFO').upper())
+
+        logging.basicConfig(format='%(asctime)s %(name)s [%(levelname)s] %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S',
+                            level=self.LOG_LEVEL)
+        logging.getLogger('Config').debug(vars(self))
+
+        self.TRANSPORT = Transport(self.SLACK_BOT_TOKEN)
