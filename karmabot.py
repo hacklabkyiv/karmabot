@@ -97,14 +97,14 @@ class Karmabot:
     def _cmd_get_user_karma(self, text, channel):
         user_id, error = Parse.cmd_get(text)
         if error:
-            self._config.TRANSPORT.post(error, channel)
+            self._config.TRANSPORT.post(channel, error)
             return False
         return self._manager.get(user_id, channel)
 
     def _cmd_set_user_karma(self, text, channel):
         result, error = Parse.cmd_set(text)
         if error:
-            self._config.TRANSPORT.post(error, channel)
+            self._config.TRANSPORT.post(channel, error)
             return False
 
         user_id, karma = result
