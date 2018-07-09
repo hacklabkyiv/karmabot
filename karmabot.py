@@ -1,9 +1,13 @@
 import logging
 import time
+from collections import namedtuple
 from parse import Parse, Format
 from config import Config
 import words
 from karma_manager import KarmaManager
+
+
+Command = namedtuple('Command', 'name parser executor admin_only')
 
 
 class Karmabot:
@@ -14,6 +18,19 @@ class Karmabot:
         self._config = cfg
         self._manager = KarmaManager(self._config)
         self._logger = logging.getLogger('Karmabot')
+
+        self._commands = [
+            Command(name='get', parser=Parse.cmd_get, executor=self._manager.get,
+                    admin_only=False),
+            Command(name='set', parser=Parse.cmd_set, executor=self._manager.set,
+                    admin_only=True),
+            Command(name='digest', parser=Parse.cmd_digest, executor=self._manager.digest,
+                    admin_only=False),
+            Command(name='config', parser=Parse.cmd_config, executor=self._cmd_config,
+                    admin_only=False),
+            Command(name='help', parser=Parse.cmd_help, executor=self._cmd_help,
+                    admin_only=False),
+        ]
 
     def listen(self):
         while True:
@@ -30,26 +47,31 @@ class Karmabot:
                 time.sleep(0.2)
 
     def _handle_dm_cmd(self, initiator_id, channel, text):
-        if text.startswith('set'):
-            if self._check_admin_permissions(initiator_id):
-                if not self._cmd_set_user_karma(text, channel):
-                    self._logger.fatal(f'Could not handle SET command: {text}')
+        if not channel.startswith('D') or self._config.TRANSPORT.lookup_username(initiator_id) == 'karmabot':
+            return False
+
+        for cmd in self._commands:
+            args = cmd.parser(text)
+            if not args:
+                # Command don't match
+                continue
+
+            if type(args) is bool:
+                args = []
+            elif type(args) is not list:
+                args = [args]
+
+            if cmd.admin_only and not self._check_admin_permissions(initiator_id):
+                # Command matched, but permissions are wrong
+                return True
+
+            if cmd.executor(*args, channel=channel):
+                self._logger.debug(f'Executed {cmd.name} command')
+            else:
+                self._logger.error(f'Failed to execute {cmd.name} commnad')
             return True
 
-        if text.startswith('get'):
-            if not self._cmd_get_user_karma(text, channel):
-                self._logger.fatal(f'Could not handle GET command: {text}')
-            return True
-
-        if text.startswith('config') or text.startswith('cfg'):
-            if self._check_admin_permissions(initiator_id):
-                self._cmd_config(channel)
-            return True
-
-        if text.startswith('help'):
-            self._cmd_help(channel)
-            return True
-
+        self._config.TRANSPORT.post(channel, Format.cmd_error())
         return False
 
     def _handle_event(self, event):
@@ -79,7 +101,7 @@ class Karmabot:
             text = event['text']
             ts = float(event['ts'])
 
-            if channel.startswith('D') and self._handle_dm_cmd(initiator_id, channel, text):
+            if self._handle_dm_cmd(initiator_id, channel, text):
                 return True
 
             # Don't handle requests from private channels (aka groups)
@@ -93,22 +115,6 @@ class Karmabot:
             return self._manager.create(initiator_id, channel, text, ts)
 
         return False
-
-    def _cmd_get_user_karma(self, text, channel):
-        user_id, error = Parse.cmd_get(text)
-        if error:
-            self._config.TRANSPORT.post(channel, error)
-            return False
-        return self._manager.get(user_id, channel)
-
-    def _cmd_set_user_karma(self, text, channel):
-        result, error = Parse.cmd_set(text)
-        if error:
-            self._config.TRANSPORT.post(channel, error)
-            return False
-
-        user_id, karma = result
-        return self._manager.set(user_id, karma)
 
     def _cmd_help(self, channel):
         self._config.TRANSPORT.post(channel, Format.hello())

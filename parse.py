@@ -30,13 +30,25 @@ class Parse:
     def cmd_get(text):
         r = re.match('get' + ' ' + Parse.REGEX['user'], text)
         if not r:
-            return None, Format.cmd_error()
-        return r[1], None
+            return None
+        return r[1]
 
     @staticmethod
     def cmd_set(text):
         r = re.match('set' + ' ' + Parse.REGEX['user'] + ' ' + '([-+]?[0-9]+)$', text)
         if not r:
-            return None, Format.cmd_error()
+            return None
         user_id, karma = r.groups()
-        return (user_id, int(karma)), None
+        return [user_id, int(karma)]
+
+    @staticmethod
+    def cmd_digest(text):
+        return text == 'digest'
+
+    @staticmethod
+    def cmd_config(text):
+        return text == 'config'
+
+    @staticmethod
+    def cmd_help(text):
+        return text == 'help'

@@ -8,6 +8,7 @@ _ = {
 - In direct messages with bot:
     - `get @username` - get karma value for `username`
     - `set @username <KARMA>` - set karma value for `username`
+    - `digest` - show users' karma in descending order (zero karma is skipped)
     - `help` - show this message
     - `config` - show config for this execution""",
 #############
@@ -49,6 +50,7 @@ A request for karma change should be like `@karmabot @username +++ blah blah`"""
 - В личных сообщениях с ботом:
     - `get @username` - получить карму `username`
     - `set @username <KARMA>` - установить новое значение кармы для `username`
+    - `digest` - показать карму пользователей в нисходящем порядке (нулевая опускается)
     - `help` - показать это сообщение
     - `config` - показать конфиг для этого запуска
 """,

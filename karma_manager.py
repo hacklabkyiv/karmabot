@@ -2,6 +2,7 @@ import logging
 import time
 from orm import get_scoped_session, Voting, Karma
 from parse import Parse, Format
+from words import Color
 
 
 # FIXME: check every where for succeded POST
@@ -24,7 +25,7 @@ class KarmaManager:
         self._config.TRANSPORT.post(channel, Format.report_karma(username, value))
         return True
 
-    def set(self, user_id, karma):
+    def set(self, user_id, karma, channel):
         karma_change = self._session.query(Karma).filter_by(user_id=user_id).first()
         if karma_change:
             karma_change.karma = karma
@@ -32,6 +33,25 @@ class KarmaManager:
             self._session.add(Karma(user_id=user_id, karma=karma))
 
         self._session.commit()
+
+        username = self._config.TRANSPORT.lookup_username(user_id)
+        self._config.TRANSPORT.post(channel, Format.report_karma(username, karma))
+        return True
+
+    def digest(self, channel):
+        result = ['*username* => *karma*']
+        for r in self._session.query(Karma).filter(Karma.karma != 0).order_by(Karma.karma.desc()).all():
+            item = '_{}_ => *{}*'.format(self._config.TRANSPORT.lookup_username(r.user_id), r.karma)
+            result.append(item)
+
+        # TODO: add translations
+        if len(result) == 1:
+            result = 'Seems like nothing to show. All the karma is zero'
+        else:
+            result.append('The rest are full ZERO')
+            result = '\n'.join(result)
+
+        self._config.TRANSPORT.post(channel, Format.message(Color.INFO, result))
         return True
 
     def create(self, initiator_id, channel, text, ts):

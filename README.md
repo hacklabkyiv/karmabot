@@ -64,6 +64,7 @@ All the commands should be sent into direct messages to **karmabot**.
 | --------- | ------------------------------- | --------------------------------------- |
 | get       | `@username`                     | get a user's karma                      |
 | set       | `@username <points>`            | set a user's karma to a specific number |
+| digest    |                                 | show users' karma in descending order (zero karma is skipped)|
 | config    |                                 | show config for this execution          |
 | help      |                                 | show this message                       |
 
