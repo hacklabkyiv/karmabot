@@ -9,6 +9,6 @@ COPY Pipfile .
 COPY Pipfile.lock .
 RUN pipenv install --system
 
-COPY ./*.py /app/
+COPY ./src /app/
 WORKDIR /app
 CMD ["python3", "karmabot.py"]
