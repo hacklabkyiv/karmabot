@@ -1,14 +1,16 @@
 import logging
 import time
 from orm import get_scoped_session, Voting, Karma
-from parse import Parse, Format
+from parse import Parse
 from words import Color
 
 
 # FIXME: check every where for succeded POST
 class KarmaManager:
-    def __init__(self, cfg):
+    def __init__(self, cfg, transport, fmt):
         self._config = cfg
+        self._transport = transport
+        self._format = fmt
         self._session = get_scoped_session(cfg.DB_URI)
         self._logger = logging.getLogger('KarmaManager')
 
@@ -21,8 +23,8 @@ class KarmaManager:
             self._session.add(Karma(user_id=user_id, karma=self._config.INITIAL_USER_KARMA))
             self._session.commit()
 
-        username = self._config.TRANSPORT.lookup_username(user_id)
-        self._config.TRANSPORT.post(channel, Format.report_karma(username, value))
+        username = self._transport.lookup_username(user_id)
+        self._transport.post(channel, self._format.report_karma(username, value))
         return True
 
     def set(self, user_id, karma, channel):
@@ -34,14 +36,14 @@ class KarmaManager:
 
         self._session.commit()
 
-        username = self._config.TRANSPORT.lookup_username(user_id)
-        self._config.TRANSPORT.post(channel, Format.report_karma(username, karma))
+        username = self._transport.lookup_username(user_id)
+        self._transport.post(channel, self._format.report_karma(username, karma))
         return True
 
     def digest(self, channel):
         result = ['*username* => *karma*']
         for r in self._session.query(Karma).filter(Karma.karma != 0).order_by(Karma.karma.desc()).all():
-            item = '_{}_ => *{}*'.format(self._config.TRANSPORT.lookup_username(r.user_id), r.karma)
+            item = '_{}_ => *{}*'.format(self._transport.lookup_username(r.user_id), r.karma)
             result.append(item)
 
         # TODO: add translations
@@ -51,7 +53,7 @@ class KarmaManager:
             result.append('The rest are full ZERO')
             result = '\n'.join(result)
 
-        self._config.TRANSPORT.post(channel, Format.message(Color.INFO, result))
+        self._transport.post(channel, self._format.message(Color.INFO, result))
         return True
 
     def create(self, initiator_id, channel, text, ts):
@@ -62,9 +64,9 @@ class KarmaManager:
             return False
 
         # Report an error if a request has not been parsed
-        result, error = Parse.karma_change(text)
-        if error:
-            self._config.TRANSPORT.post(channel, error, ts=ts)
+        result = Parse.karma_change(text)
+        if not result:
+            self._transport.post(channel, self._format.parsing_error(), ts=ts)
             return None
 
         bot_id, user_id, points = result
@@ -73,16 +75,16 @@ class KarmaManager:
                                                 bot_id,
                                                 points)
         if error:
-            self._config.TRANSPORT.post(channel, error, ts=ts)
+            self._transport.post(channel, error, ts=ts)
             return None
 
-        username = self._config.TRANSPORT.lookup_username(user_id)
-        msg = Format.new_voting(username, points,
+        username = self._transport.lookup_username(user_id)
+        msg = self._format.new_voting(username, points,
                                 self._config.UPVOTE_EMOJI,
                                 self._config.DOWNVOTE_EMOJI,
                                 self._config.VOTE_TIMEOUT)
 
-        result = self._config.TRANSPORT.post(channel, msg, ts=ts)
+        result = self._transport.post(channel, msg, ts=ts)
         karma = Voting(initial_msg_ts=ts,
                        bot_msg_ts=float(result['ts']),
                        channel=channel,
@@ -103,7 +105,7 @@ class KarmaManager:
         for e in expired:
             self._logger.debug(f'Expired voting: {e}')
 
-            reactions = self._config.TRANSPORT.reactions_get(e.channel, e.initial_msg_ts, e.bot_msg_ts)
+            reactions = self._transport.reactions_get(e.channel, e.initial_msg_ts, e.bot_msg_ts)
             if reactions is None:
                 result = False
                 self._logger.error(f'Failed to get messages for: {e}')
@@ -125,9 +127,9 @@ class KarmaManager:
         return result
 
     def _close(self, karma_change, success):
-        username = self._config.TRANSPORT.lookup_username(karma_change.user_id)
-        return self._config.TRANSPORT.update(karma_change.channel,
-                                             Format.voting_result(username, karma_change.karma, success),
+        username = self._transport.lookup_username(karma_change.user_id)
+        return self._transport.update(karma_change.channel,
+                                             self._format.voting_result(username, karma_change.karma, success),
                                              karma_change.bot_msg_ts)
 
     def _determine_success(self, reactions):
@@ -144,9 +146,9 @@ class KarmaManager:
                                    bot_id,
                                    karma):
         if not self._config.SELF_KARMA and initiator_id == user_id:
-            return Format.strange_error()
+            return self._format.strange_error()
         if user_id == bot_id:
-            return Format.robo_error()
+            return self._format.robo_error()
         if abs(karma) > self._config.MAX_SHOT:
-            return Format.max_shot_error(self._config.MAX_SHOT)
+            return self._format.max_shot_error(self._config.MAX_SHOT)
         return None

@@ -19,12 +19,12 @@ class Parse:
     def karma_change(text):
         full_match = re.match(Parse.REGEX['user'] + ' ' + Parse.REGEX['user'] + ' ' + Parse.REGEX['karma'] + '+', text)
         if not full_match:
-            return None, Format.parsing_error()
+            return None
 
         bot_id, user_id, vote = full_match.groups()
         plus = vote.count('+')
         minus = vote.count('-')
-        return (bot_id, user_id, plus or -minus), None
+        return bot_id, user_id, plus or -minus
 
     @staticmethod
     def cmd_get(text):

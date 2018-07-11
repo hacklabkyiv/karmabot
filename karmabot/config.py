@@ -1,6 +1,5 @@
 import os
 import logging
-from transport import Transport
 
 
 class Config:
@@ -24,5 +23,3 @@ class Config:
                             datefmt='%Y-%m-%d %H:%M:%S',
                             level=self.LOG_LEVEL)
         logging.getLogger('Config').debug(vars(self))
-
-        self.TRANSPORT = Transport(self.SLACK_BOT_TOKEN)

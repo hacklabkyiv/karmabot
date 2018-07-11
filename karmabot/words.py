@@ -85,8 +85,6 @@ _ПРОТИВ:_ {}
     }
 }
 
-MESSAGE = _['en']
-
 _INTERVALS = (604800,  # 60 * 60 * 24 * 7
               86400,   # 60 * 60 * 24
               3600,    # 60 * 60
@@ -109,13 +107,6 @@ def display_time(seconds, granularity=4):
     return ', '.join(result[:granularity])
 
 
-def init(lang):
-    r = _.get(lang, None)
-    if r:
-        global MESSAGE
-        MESSAGE = r
-
-
 class Status:
     OPEN = ':hourglass_flowing_sand:'
     CLOSED = ':white_check_mark:'
@@ -127,6 +118,9 @@ class Color:
 
 
 class Format:
+    def __init__(self, lang):
+        self._messages = _.get(lang, 'en')
+
     @staticmethod
     def message(color, text, image=None):
         return {
@@ -141,13 +135,11 @@ class Format:
             }]
         }
 
-    @staticmethod
-    def hello():
-        return Format.message(Color.INFO, MESSAGE['hello'])
+    def hello(self):
+        return Format.message(Color.INFO, self._messages['hello'])
 
-    @staticmethod
-    def new_voting(username, karma, votes_up_emoji, votes_down_emoji, timeout):
-        text = MESSAGE['new_voting'].format(Status.OPEN,
+    def new_voting(self, username, karma, votes_up_emoji, votes_down_emoji, timeout):
+        text = self._messages['new_voting'].format(Status.OPEN,
                                             karma,
                                             username,
                                             ':' + ': :'.join(votes_up_emoji) + ':',
@@ -155,37 +147,30 @@ class Format:
                                             display_time(int(timeout)))
         return Format.message(Color.INFO, text)
 
-    @staticmethod
-    def voting_result(username, karma, success):
+    def voting_result(self, username, karma, success):
         if success:
             emoji = ':tada:' if karma > 0 else ':face_palm:'
-            text = MESSAGE['voting_result_success'].format(Status.CLOSED, username, karma, emoji)
+            text = self._messages['voting_result_success'].format(Status.CLOSED, username, karma, emoji)
         else:
             emoji = ':fidget_spinner:'
-            text = MESSAGE['voting_result_nothing'].format(Status.CLOSED, username, emoji)
+            text = self._messages['voting_result_nothing'].format(Status.CLOSED, username, emoji)
 
         return Format.message(Color.INFO, text)
 
-    @staticmethod
-    def report_karma(username, karma):
-        return Format.message(Color.INFO, MESSAGE['report_karma'].format(username, karma))
+    def report_karma(self, username, karma):
+        return Format.message(Color.INFO, self._messages['report_karma'].format(username, karma))
 
-    @staticmethod
-    def parsing_error():
-        return Format.message(Color.ERROR, MESSAGE['parsing_error'].format(':robot_face:'))
+    def parsing_error(self):
+        return Format.message(Color.ERROR, self._messages['parsing_error'].format(':robot_face:'))
 
-    @staticmethod
-    def max_shot_error(max_shot):
-        return Format.message(Color.ERROR, MESSAGE['max_shot_error'].format(max_shot))
+    def max_shot_error(self, max_shot):
+        return Format.message(Color.ERROR, self._messages['max_shot_error'].format(max_shot))
 
-    @staticmethod
-    def strange_error():
-        return Format.message(Color.ERROR, MESSAGE['strange_error'].format(':grimacing:'))
+    def strange_error(self):
+        return Format.message(Color.ERROR, self._messages['strange_error'].format(':grimacing:'))
 
-    @staticmethod
-    def robo_error():
-        return Format.message(Color.ERROR, MESSAGE['robo_error'].format(':robot_face:'))
+    def robo_error(self):
+        return Format.message(Color.ERROR, self._messages['robo_error'].format(':robot_face:'))
 
-    @staticmethod
-    def cmd_error():
-        return Format.message(Color.ERROR, MESSAGE['cmd_error'], image='https://i.imgflip.com/2cuafm.jpg')
+    def cmd_error(self):
+        return Format.message(Color.ERROR, self._messages['cmd_error'], image='https://i.imgflip.com/2cuafm.jpg')
