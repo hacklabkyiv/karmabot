@@ -1,10 +1,10 @@
 import logging
 import time
 from collections import namedtuple
-from parse import Parse, Format
-from config import Config
+from .parse import Parse, Format
+from .config import Config
 import words
-from karma_manager import KarmaManager
+from .karma_manager import KarmaManager
 import transport
 
 

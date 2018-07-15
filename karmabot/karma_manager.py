@@ -1,8 +1,8 @@
 import logging
 import time
-from orm import get_scoped_session, Voting, Karma
-from parse import Parse
-from words import Color
+from .orm import get_scoped_session, Voting, Karma
+from .parse import Parse
+from .words import Color
 
 
 # FIXME: check every where for succeded POST
