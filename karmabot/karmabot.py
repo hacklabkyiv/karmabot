@@ -1,9 +1,9 @@
 import logging
 import time
 from collections import namedtuple
-from .parse import Parse, Format
+from .parse import Parse
 from .config import Config
-import words
+from .words import Format
 from .karma_manager import KarmaManager
 import transport
 

@@ -4,3 +4,4 @@ env_vars.py
 *.pyc
 .idea/
 karma.db
+.pytest_cache/

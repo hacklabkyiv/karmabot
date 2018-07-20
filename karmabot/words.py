@@ -92,21 +92,6 @@ _INTERVALS = (604800,  # 60 * 60 * 24 * 7
               1)
 
 
-def display_time(seconds, granularity=4):
-    result = []
-
-    for i, count in enumerate(_INTERVALS):
-        value = seconds // count
-        if value:
-            seconds -= value * count
-            if value == 1:
-                name = MESSAGE['time'].get('one')[i]
-            else:
-                name = MESSAGE['time'].get('many')[i]
-            result.append("{} {}".format(value, name))
-    return ', '.join(result[:granularity])
-
-
 class Status:
     OPEN = ':hourglass_flowing_sand:'
     CLOSED = ':white_check_mark:'
@@ -135,6 +120,20 @@ class Format:
             }]
         }
 
+    def display_time(self, seconds, granularity=4):
+        result = []
+
+        for i, count in enumerate(_INTERVALS):
+            value = seconds // count
+            if value:
+                seconds -= value * count
+                if value == 1:
+                    name = self._messages['time'].get('one')[i]
+                else:
+                    name = self._messages['time'].get('many')[i]
+                result.append("{} {}".format(value, name))
+        return ', '.join(result[:granularity])
+
     def hello(self):
         return Format.message(Color.INFO, self._messages['hello'])
 
@@ -144,7 +143,7 @@ class Format:
                                             username,
                                             ':' + ': :'.join(votes_up_emoji) + ':',
                                             ':' + ': :'.join(votes_down_emoji) + ':',
-                                            display_time(int(timeout)))
+                                            self.display_time(int(timeout)))
         return Format.message(Color.INFO, text)
 
     def voting_result(self, username, karma, success):

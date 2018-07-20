@@ -80,9 +80,9 @@ class KarmaManager:
 
         username = self._transport.lookup_username(user_id)
         msg = self._format.new_voting(username, points,
-                                self._config.UPVOTE_EMOJI,
-                                self._config.DOWNVOTE_EMOJI,
-                                self._config.VOTE_TIMEOUT)
+                                      self._config.UPVOTE_EMOJI,
+                                      self._config.DOWNVOTE_EMOJI,
+                                      self._config.VOTE_TIMEOUT)
 
         result = self._transport.post(channel, msg, ts=ts)
         karma = Voting(initial_msg_ts=ts,
