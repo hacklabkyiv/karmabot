@@ -4,15 +4,19 @@ from slackclient import SlackClient
 
 
 class Transport:
-    def __init__(self, token):
+    def __init__(self, client):
         self._logger = logging.getLogger('Transport')
-        self.client = SlackClient(token)
-        if not self.client.rtm_connect(with_team_state=False,
-                                       auto_reconnect=True,
-                                       timeout=15):
-            raise RuntimeError('Cannot connect to the Slack')
-
+        self.client = client
         self._username_cache = {}
+
+    @staticmethod
+    def create(token):
+        client = SlackClient(token)
+        if not client.rtm_connect(with_team_state=False,
+                                  auto_reconnect=True,
+                                  timeout=15):
+            raise RuntimeError('Cannot connect to the Slack')
+        return client
 
     def read(self):
         return self.client.rtm_read()

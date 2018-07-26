@@ -17,7 +17,7 @@ class Karmabot:
 
     def __init__(self, cfg):
         self._config = cfg
-        self._transport = transport.Transport(cfg.SLACK_BOT_TOKEN)
+        self._transport = transport.Transport.create(cfg.SLACK_BOT_TOKEN)
         self._format = Format(cfg.BOT_LANG)
         self._manager = KarmaManager(self._config, self._transport, self._format)
         self._logger = logging.getLogger('Karmabot')

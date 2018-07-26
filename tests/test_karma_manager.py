@@ -3,7 +3,6 @@ import time
 from collections import namedtuple, Counter
 from karmabot.karma_manager import KarmaManager
 from karmabot.words import Color
-# from karmabot.transport import Transport
 from karmabot.orm import get_scoped_session, Karma, Voting
 from unittest.mock import MagicMock, ANY, call, patch
 from .common import *
@@ -24,7 +23,7 @@ KarmaManagerWrapper = namedtuple('KarmaManagerWrapper', 'fmt, transport, session
 
 def new_session():
     s = get_scoped_session(Config.DB_URI)
-    for u, k in sample_karma().items():
+    for u, k in SAMPLE_KARMA.items():
         s.add(Karma(user_id=u, karma=k))
     s.commit()
     return s
@@ -78,7 +77,7 @@ def test_set_non_existing(data):
 def test_digest(data):
     data.km.digest(TEST_CHANNEL)
 
-    calls = [call(u) for u, k in sample_karma().items() if k != 0]
+    calls = [call(u) for u, k in SAMPLE_KARMA.items() if k != 0]
 
     data.transport.lookup_username.assert_has_calls(calls=calls, any_order=True)
     data.fmt.message.assert_called_with(Color.INFO, ANY)
