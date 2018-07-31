@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, call, patch
 from collections import Counter
 from karmabot.transport import Transport
 from .common import *
@@ -35,3 +35,9 @@ def test_reactions_get(transport):
 
     calls = [call('reactions.get', channel=TEST_CHANNEL, timestamp=ts) for ts in [init_msg_ts, bot_msg_ts]]
     transport.client.api_call.assert_has_calls(calls, any_order=True)
+
+def test_create():
+    with patch('slackclient.SlackClient.rtm_connect') as m:
+        m.return_value = True
+        t = Transport.create(None)
+        assert type(t) is Transport

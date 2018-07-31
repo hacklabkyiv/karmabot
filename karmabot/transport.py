@@ -16,7 +16,7 @@ class Transport:
                                   auto_reconnect=True,
                                   timeout=15):
             raise RuntimeError('Cannot connect to the Slack')
-        return client
+        return Transport(client)
 
     def read(self):
         return self.client.rtm_read()
