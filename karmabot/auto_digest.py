@@ -17,7 +17,7 @@ class AutoDigest:
 
     def digest(self):
         # TODO: make optimizations
-        if date.today() == self._target_date.date():
+        if date.today() == self._target_date:
             self._func(self._channel)
             self._target_date = self._next_date(fired=True)
 
