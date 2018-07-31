@@ -15,7 +15,7 @@ class Config:
                                       .replace(',', ' ').split()
         self.DOWNVOTE_EMOJI = os.environ.get('DOWNVOTE_EMOJI', default='-1,thumbsdown').replace(',', ' ').split()
         self.SELF_KARMA = os.environ.get('SELF_KARMA', default='false').lower() in ['true', '1', 'y', 'yes']
-        self.ADMINS = os.environ.get('ADMINS').replace(',', ' ').split()
+        self.ADMINS = os.environ.get('ADMINS', default='').replace(',', ' ').split()
 
         self.AUTO_POST_CHANNEL = os.environ.get('AUTO_POST_CHANNEL', default='').strip('@# ')
         self.AUTO_POST_DAY = int(os.environ.get('AUTO_POST_DAY', default=1))
