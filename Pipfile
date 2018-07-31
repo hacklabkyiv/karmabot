@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 sqlalchemy = "*"
 slackclient = "*"
+python-dateutil = "*"
 
 [dev-packages]
 pytest = "*"

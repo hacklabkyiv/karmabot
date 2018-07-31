@@ -43,6 +43,8 @@ You can modify **FROM** field in order to target your distro.
 | `DOWNVOTE_EMOJI`            | no        | reactjis to use for downvotes.           | `-1`, `thumbsdown`                    |
 | `SELF_KARMA`                | no        | allow users to add/remove karma to themselves | `false`                          |
 | `ADMINS`                    | no        | admins who can set karma to users        |                                       |
+| `AUTO_POST_CHANNEL`         | no        | channel to post digest to                |                                       |
+| `AUTO_POST_DAY`             | no        | a day when auto digest will be posted    | `1`                                   |
 | `LOG_LEVEL`                 | no        | set log level                            | `INFO`                                |
 
 

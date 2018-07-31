@@ -6,6 +6,7 @@ from .config import Config
 from .words import Format, Color
 from .karma_manager import KarmaManager
 from .transport import Transport
+from .auto_digest import AutoDigest
 
 
 Command = namedtuple('Command', 'name parser executor admin_only')
@@ -20,6 +21,13 @@ class Karmabot:
         self._transport = transport
         self._format = fmt
         self._manager = manager
+
+        self._auto_digest = self._configure_auto_digest()
+        if self._auto_digest:
+            self._auto_digest_cmd = self._auto_digest.digest
+        else:
+            self._auto_digest_cmd = lambda: None
+
         self._logger = logging.getLogger('Karmabot')
 
         self._commands = [
@@ -45,6 +53,7 @@ class Karmabot:
                 self._logger.debug(f'Leaving unhandled: {event}')
 
             self._manager.close_expired_votes()
+            self._auto_digest_cmd()
 
             if not events:
                 time.sleep(0.2)
@@ -123,6 +132,20 @@ class Karmabot:
 
     def _check_admin_permissions(self, initiator_id):
         return self._transport.lookup_username(initiator_id) in self._config.ADMINS
+
+    def _configure_auto_digest(self):
+        if self._config.AUTO_POST_CHANNEL and self._config.AUTO_POST_DAY:
+            result = self._transport.client.api_call('channels.list',
+                                                     exclude_archived=True,
+                                                     exclude_members=True)
+            for c in result.get('channels', []):
+                if c['name'] == self._config.AUTO_POST_CHANNEL:
+                    auto_digest = AutoDigest(self._config.AUTO_POST_DAY, c['id'], self._manager.digest)
+                    logging.debug(f'Auto digest for channel={self._config.AUTO_POST_CHANNEL} configured successfully')
+                    return auto_digest
+
+        logging.error(f'Failed to configure auto digest for channel={self._config.AUTO_POST_CHANNEL}')
+        return None
 
 
 if __name__ == '__main__':

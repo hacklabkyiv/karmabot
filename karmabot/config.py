@@ -17,6 +17,9 @@ class Config:
         self.SELF_KARMA = os.environ.get('SELF_KARMA', default='false').lower() in ['true', '1', 'y', 'yes']
         self.ADMINS = os.environ.get('ADMINS').replace(',', ' ').split()
 
+        self.AUTO_POST_CHANNEL = os.environ.get('AUTO_POST_CHANNEL', default='').strip('@# ')
+        self.AUTO_POST_DAY = int(os.environ.get('AUTO_POST_DAY', default=1))
+
         self.LOG_LEVEL = logging.getLevelName(os.environ.get('LOG_LEVEL', default='INFO').upper())
 
         logging.basicConfig(format='%(asctime)s %(name)s [%(levelname)s] %(message)s',
