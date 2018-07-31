@@ -1,12 +1,9 @@
 import logging
 import time
 from collections import namedtuple
-from .parse import Parse
-from .config import Config
-from .words import Format, Color
-from .karma_manager import KarmaManager
-from .transport import Transport
-from .auto_digest import AutoDigest
+from karmabot.parse import Parse
+from karmabot.words import Format, Color
+from karmabot.auto_digest import AutoDigest
 
 
 Command = namedtuple('Command', 'name parser executor admin_only')
@@ -146,12 +143,3 @@ class Karmabot:
 
         logging.error(f'Failed to configure auto digest for channel={self._config.AUTO_POST_CHANNEL}')
         return None
-
-
-if __name__ == '__main__':
-    config = Config()
-    t = Transport.create(config.SLACK_BOT_TOKEN)
-    f = Format(config.BOT_LANG)
-    m = KarmaManager(cfg=config, transport=t, fmt=f)
-    bot = Karmabot(config, transport=t, fmt=f, manager=m)
-    bot.listen()

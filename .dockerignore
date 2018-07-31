@@ -1,5 +1,6 @@
 *~
-Makefile
-.git
-.gitignore
+.*
 README.md
+docker*
+Dockerfile
+tests
