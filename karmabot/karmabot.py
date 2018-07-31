@@ -3,9 +3,9 @@ import time
 from collections import namedtuple
 from .parse import Parse
 from .config import Config
-from .words import Format
+from .words import Format, Color
 from .karma_manager import KarmaManager
-import transport
+from .transport import Transport
 
 
 Command = namedtuple('Command', 'name parser executor admin_only')
@@ -15,11 +15,11 @@ class Karmabot:
     REQUIRED_MESSAGE_FIELDS = ('user', 'text', 'ts')
     REQUIRED_EVENT_FIELDS = ('type', 'channel')
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, transport, fmt, manager):
         self._config = cfg
-        self._transport = transport.Transport.create(cfg.SLACK_BOT_TOKEN)
-        self._format = Format(cfg.BOT_LANG)
-        self._manager = KarmaManager(self._config, self._transport, self._format)
+        self._transport = transport
+        self._format = fmt
+        self._manager = manager
         self._logger = logging.getLogger('Karmabot')
 
         self._commands = [
@@ -50,6 +50,7 @@ class Karmabot:
                 time.sleep(0.2)
 
     def _handle_dm_cmd(self, initiator_id, channel, text):
+        # Handling only DM messages and skipping own messages
         if not channel.startswith('D') or self._transport.lookup_username(initiator_id) == 'karmabot':
             return False
 
@@ -89,12 +90,6 @@ class Karmabot:
 
             self._logger.info(f'Team joined by user_id={user_id}')
             return True
-        elif event_type == 'channel_joined' or event_type == 'group_joined':
-            channel = event['channel']['id']
-            self._transport.post(channel, self._format.hello())
-
-            self._logger.info(f'Karmabot joined a channel={channel}')
-            return True
         elif event_type == 'message':
             if not all(f in event for f in self.REQUIRED_MESSAGE_FIELDS):
                 return False
@@ -124,7 +119,7 @@ class Karmabot:
 
     def _cmd_config(self, channel):
         tokens = [f'{k}: {v}' for k, v in vars(self._config).items() if k not in ['TRANSPORT', 'SLACK_BOT_TOKEN']]
-        self._transport.post(channel, Format.message(words.Color.INFO, '\n'.join(tokens)))
+        self._transport.post(channel, Format.message(Color.INFO, '\n'.join(tokens)))
 
     def _check_admin_permissions(self, initiator_id):
         return self._transport.lookup_username(initiator_id) in self._config.ADMINS
@@ -132,5 +127,8 @@ class Karmabot:
 
 if __name__ == '__main__':
     config = Config()
-    bot = Karmabot(config)
+    t = Transport.create(config.SLACK_BOT_TOKEN)
+    f = Format(config.BOT_LANG)
+    m = KarmaManager(cfg=config, transport=t, fmt=f)
+    bot = Karmabot(config, transport=t, fmt=f, manager=m)
     bot.listen()
