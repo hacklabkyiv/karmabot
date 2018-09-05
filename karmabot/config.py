@@ -26,3 +26,11 @@ class Config:
                             datefmt='%Y-%m-%d %H:%M:%S',
                             level=self.LOG_LEVEL)
         logging.getLogger('Config').debug(vars(self))
+
+        if self.LOG_LEVEL == logging.DEBUG:
+            import http.client as http_client
+
+            http_client.HTTPConnection.debuglevel = 1
+            requests_log = logging.getLogger("requests.packages.urllib3")
+            requests_log.setLevel(logging.DEBUG)
+            requests_log.propagate = True
