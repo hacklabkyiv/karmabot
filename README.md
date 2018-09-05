@@ -16,13 +16,25 @@ This means that no karma will be applied unless community react using emoji.*
 
 ## Installation
 
-0. Install `docker`
-1. Clone the repo `git clone https://github.com/dethoter/karmabot $HOME/.karmabot`
-2. `./docker_build.sh`
-3. `./docker_run.sh`
+### Docker
+
+Install `docker` and then:
+
+```sh
+$ git clone https://github.com/dethoter/karmabot && cd karmabot
+# docker build -t karmabot .
+# docker run -d --name karmabot --restart=unless-stopped --env-file=.env -it -v ./:/app karmabot
+```
 
 This `Dockerfile` from repo contains setup for RaspberryPi.
 You can modify **FROM** field in order to target your distro.
+
+### Locally
+
+```sh
+$ pipenv install
+$ env $(cat .env | xargs) pipenv run python ./app.py
+```
 
 
 ## Usage
@@ -46,16 +58,6 @@ You can modify **FROM** field in order to target your distro.
 | `AUTO_POST_CHANNEL`         | no        | channel to post digest to                |                                       |
 | `AUTO_POST_DAY`             | no        | a day when auto digest will be posted    | `1`                                   |
 | `LOG_LEVEL`                 | no        | set log level                            | `INFO`                                |
-
-
-### Testing
-
-In order to test locally use:
-
-```sh
-$ pipenv install
-$ env $(cat .env | xargs) pipenv run python ./karmabot.py
-```
 
 
 ### Commands
