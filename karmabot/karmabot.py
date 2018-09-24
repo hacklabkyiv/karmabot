@@ -103,7 +103,7 @@ class Karmabot:
             initiator_id = event['user']
             channel = event['channel']
             text = event['text']
-            ts = float(event['ts'])
+            ts = event['ts']
 
             if self._handle_dm_cmd(initiator_id, channel, text):
                 return True

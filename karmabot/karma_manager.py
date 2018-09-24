@@ -86,7 +86,7 @@ class KarmaManager:
 
         result = self._transport.post(channel, msg, ts=ts)
         karma = Voting(initial_msg_ts=ts,
-                       bot_msg_ts=float(result['ts']),
+                       bot_msg_ts=result['ts'],
                        channel=channel,
                        user_id=user_id,
                        initiator_id=initiator_id,
