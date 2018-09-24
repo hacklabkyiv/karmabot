@@ -1,21 +1,24 @@
 import logging
 from collections import Counter
 from slackclient import SlackClient
+import time
 
 
 class Transport:
+    LOGGER = logging.getLogger('Transport')
+
     def __init__(self, client):
-        self._logger = logging.getLogger('Transport')
         self.client = client
         self._username_cache = {}
 
     @staticmethod
     def create(token):
         client = SlackClient(token)
-        if not client.rtm_connect(with_team_state=False,
-                                  auto_reconnect=True,
-                                  timeout=15):
-            raise RuntimeError('Cannot connect to the Slack')
+        while not client.rtm_connect(with_team_state=False,
+                                     auto_reconnect=True,
+                                     timeout=15):
+            Transport.LOGGER.debug('Cannot connect to the Slack. Reconnecting in 3seconds...')
+            time.sleep(3)
         return Transport(client)
 
     def read(self):
@@ -36,7 +39,7 @@ class Transport:
             result = self.client.api_call('reactions.get',
                                           channel=channel,
                                           timestamp=ts)
-            self._logger.debug(f'Getting reactions: {result}')
+            Transport.LOGGER.debug(f'Getting reactions: {result}')
 
             if 'message' not in result:
                 return None
@@ -46,7 +49,7 @@ class Transport:
         return r
 
     def post(self, channel, msg, ts=''):
-        self._logger.debug(f'Sending message: {msg}')
+        Transport.LOGGER.debug(f'Sending message: {msg}')
         return self.client.api_call('chat.postMessage',
                                     link_names=1,
                                     as_user=True,
@@ -55,7 +58,7 @@ class Transport:
                                     **msg)
 
     def update(self, channel, msg, ts):
-        self._logger.debug(f'Sending update: {msg}')
+        Transport.LOGGER.debug(f'Sending update: {msg}')
         return self.client.api_call('chat.update',
                                     link_names=1,
                                     as_user=True,
