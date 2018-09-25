@@ -85,12 +85,6 @@ _ПРОТИВ:_ {}
     }
 }
 
-_INTERVALS = (604800,  # 60 * 60 * 24 * 7
-              86400,   # 60 * 60 * 24
-              3600,    # 60 * 60
-              60,
-              1)
-
 
 class Status:
     OPEN = ':hourglass_flowing_sand:'
@@ -103,8 +97,17 @@ class Color:
 
 
 class Format:
-    def __init__(self, lang):
+    _INTERVALS = (604800,  # 60 * 60 * 24 * 7
+                  86400,  # 60 * 60 * 24
+                  3600,  # 60 * 60
+                  60,
+                  1)
+
+    def __init__(self, lang, votes_up_emoji, votes_down_emoji, timeout):
         self._messages = _.get(lang, 'en')
+        self._votes_up_emoji = votes_up_emoji
+        self._votes_down_emoji = votes_down_emoji
+        self._display_time = self.display_time(int(timeout))
 
     @staticmethod
     def message(color, text, image=None):
@@ -123,7 +126,7 @@ class Format:
     def display_time(self, seconds, granularity=4):
         result = []
 
-        for i, count in enumerate(_INTERVALS):
+        for i, count in enumerate(Format._INTERVALS):
             value = seconds // count
             if value:
                 seconds -= value * count
@@ -137,13 +140,11 @@ class Format:
     def hello(self):
         return Format.message(Color.INFO, self._messages['hello'])
 
-    def new_voting(self, username, karma, votes_up_emoji, votes_down_emoji, timeout):
-        text = self._messages['new_voting'].format(Status.OPEN,
-                                            karma,
-                                            username,
-                                            ':' + ': :'.join(votes_up_emoji) + ':',
-                                            ':' + ': :'.join(votes_down_emoji) + ':',
-                                            self.display_time(int(timeout)))
+    def new_voting(self, username, karma):
+        text = self._messages['new_voting'].format(Status.OPEN, karma, username,
+                                                   ':' + ': :'.join(self._votes_up_emoji) + ':',
+                                                   ':' + ': :'.join(self._votes_down_emoji) + ':',
+                                                   self._display_time)
         return Format.message(Color.INFO, text)
 
     def voting_result(self, username, karma, success):

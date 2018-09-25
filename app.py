@@ -8,7 +8,10 @@ from karmabot.karmabot import Karmabot
 if __name__ == '__main__':
     config = Config()
     t = Transport.create(config.SLACK_BOT_TOKEN)
-    f = Format(config.BOT_LANG)
+    f = Format(config.BOT_LANG,
+               config.UPVOTE_EMOJI,
+               config.DOWNVOTE_EMOJI,
+               config.VOTE_TIMEOUT)
     m = KarmaManager(cfg=config, transport=t, fmt=f)
     bot = Karmabot(config, transport=t, fmt=f, manager=m)
     bot.listen()
