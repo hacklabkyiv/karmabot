@@ -1,5 +1,7 @@
 import logging
 import time
+from datetime import datetime
+from datetime import timedelta
 from .orm import get_scoped_session, Voting, Karma
 from .parse import Parse
 from .words import Color
@@ -51,6 +53,25 @@ class KarmaManager:
             result = 'Seems like nothing to show. All the karma is zero'
         else:
             result.append('The rest are full ZERO')
+            result = '\n'.join(result)
+
+        self._transport.post(channel, self._format.message(Color.INFO, result))
+        return True
+
+    def pending(self, channel):
+        result = ['*initiator* | *receiver* | *channel* | *karma* | *expired*']
+        for r in self._session.query(Voting).all():
+            time_left = datetime.fromtimestamp(r.initial_msg_ts) + timedelta(seconds=self._config.VOTE_TIMEOUT)
+            item = '{} | {} | {} | {} | {}'.format(self._transport.lookup_username(r.initiator_id),
+                                                   self._transport.lookup_username(r.user_id),
+                                                   self._transport.lookup_channel_name(r.channel),
+                                                   r.karma,
+                                                   time_left.isoformat())
+            result.append(item)
+
+        if len(result) == 1:
+            result = 'Seems like nothing to show'
+        else:
             result = '\n'.join(result)
 
         self._transport.post(channel, self._format.message(Color.INFO, result))

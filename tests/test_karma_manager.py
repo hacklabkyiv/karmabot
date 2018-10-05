@@ -1,10 +1,13 @@
 import pytest
 import time
 from collections import namedtuple, Counter
+from datetime import datetime
+from datetime import timedelta
+from unittest.mock import MagicMock, ANY, call, patch
+
 from karmabot.karma_manager import KarmaManager
 from karmabot.words import Color
 from karmabot.orm import get_scoped_session, Karma, Voting
-from unittest.mock import MagicMock, ANY, call, patch
 from .common import *
 
 
@@ -83,6 +86,26 @@ def test_digest(data):
     data.fmt.message.assert_called_with(Color.INFO, ANY)
     data.transport.post.assert_called_with(TEST_CHANNEL, ANY)
 
+def test_pending_print(data):
+    initial_msg_ts = '1.0'
+    data.session.add(Voting(initial_msg_ts=initial_msg_ts,
+                            bot_msg_ts='1.1',
+                            channel=TEST_CHANNEL,
+                            user_id=TEST_USER,
+                            initiator_id=TEST_USER,
+                            karma=1,
+                            text=f'@bot @{TEST_USER} +'))
+    data.session.commit()
+
+    data.transport.lookup_channel_name.return_value = 'general'
+    data.km.pending(TEST_CHANNEL)
+
+    expired = datetime.fromtimestamp(float(initial_msg_ts)) + timedelta(seconds=Config.VOTE_TIMEOUT)
+    expired = expired.isoformat()
+
+    expect = '\n'.join(('*initiator* | *receiver* | *channel* | *karma* | *expired*',
+                        f'test_user | test_user | general | 1 | {expired}'))
+    data.fmt.message.assert_called_with(Color.INFO, expect)
 
 def test_create(data):
     text = '@karmabot @user_id ++'

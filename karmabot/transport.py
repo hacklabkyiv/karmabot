@@ -10,6 +10,7 @@ class Transport:
     def __init__(self, client):
         self.client = client
         self._username_cache = {}
+        self._channel_name_cache = {}
 
     @staticmethod
     def create(token):
@@ -32,6 +33,15 @@ class Transport:
             username = userinfo['user']['name']
             self._username_cache[user] = username
         return username
+
+    def lookup_channel_name(self, channel_id):
+        channel_id = channel_id.strip('<>@')
+        channel_name = self._channel_name_cache.get(channel_id)
+        if not channel_name:
+            channel_info = self.client.api_call('channels.info', channel=channel_id)
+            channel_name = channel_info['channel']['name']
+            self._channel_name_cache[channel_id] = channel_name
+        return channel_name
 
     def reactions_get(self, channel, initial_msg_ts, bot_msg_ts):
         r = Counter()
