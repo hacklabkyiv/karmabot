@@ -116,8 +116,8 @@ def test_create(data):
         data.km.create('init_id', TEST_CHANNEL, text, ts)
 
     obj = data.session.query(Voting).first()
-    assert obj.initial_msg_ts == ts
-    assert obj.bot_msg_ts == float('123.000000')
+    assert float(obj.initial_msg_ts) == ts
+    assert float(obj.bot_msg_ts) == float('123.000000')
     assert obj.channel == TEST_CHANNEL
     assert obj.user_id == 'user_id'
     assert obj.initiator_id == 'init_id'

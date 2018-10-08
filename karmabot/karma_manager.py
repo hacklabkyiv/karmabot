@@ -2,7 +2,7 @@ import logging
 import time
 from datetime import datetime
 from datetime import timedelta
-from .orm import get_scoped_session, Voting, Karma
+from .orm import get_scoped_session, Voting, Karma, cast, Float
 from .parse import Parse
 from .words import Color
 
@@ -61,7 +61,7 @@ class KarmaManager:
     def pending(self, channel):
         result = ['*initiator* | *receiver* | *channel* | *karma* | *expired*']
         for r in self._session.query(Voting).all():
-            time_left = datetime.fromtimestamp(r.initial_msg_ts) + timedelta(seconds=self._config.VOTE_TIMEOUT)
+            time_left = datetime.fromtimestamp(float(r.initial_msg_ts)) + timedelta(seconds=self._config.VOTE_TIMEOUT)
             item = '{} | {} | {} | {} | {}'.format(self._transport.lookup_username(r.initiator_id),
                                                    self._transport.lookup_username(r.user_id),
                                                    self._transport.lookup_channel_name(r.channel),
@@ -119,7 +119,7 @@ class KarmaManager:
         result = True
         now = time.time()
         expired = self._session.query(Voting) \
-            .filter(Voting.bot_msg_ts + self._config.VOTE_TIMEOUT < now).all()
+            .filter(cast(Voting.bot_msg_ts, Float) + self._config.VOTE_TIMEOUT < now).all()
         for e in expired:
             self._logger.debug(f'Expired voting: {e}')
 

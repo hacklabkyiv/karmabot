@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, Float, Text
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy import cast
 
 
 ORM_BASE = declarative_base()
@@ -32,8 +33,8 @@ class Voting(ORM_BASE):
     __tablename__ = 'pending'
 
     id = Column(Integer, primary_key=True)
-    initial_msg_ts = Column(Float, nullable=False)
-    bot_msg_ts = Column(Float, nullable=False)
+    initial_msg_ts = Column(String, nullable=False)
+    bot_msg_ts = Column(String, nullable=False)
     channel = Column(String(256), nullable=False)
     user_id = Column(String(256), nullable=False)
     initiator_id = Column(String(256), nullable=False)
