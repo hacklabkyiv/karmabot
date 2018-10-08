@@ -4,7 +4,7 @@ import re
 class Parse:
     REGEX = {
         'user': '<@([A-Za-z]+[A-Za-z0-9-_]+)>',
-        'karma': '([\+]{1,}|[\-]{1,})',
+        'karma': r'([+]{1,}|[-]{1,})',
     }
 
     @staticmethod
