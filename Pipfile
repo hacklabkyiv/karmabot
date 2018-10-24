@@ -7,9 +7,14 @@ name = "pypi"
 sqlalchemy = "*"
 slackclient = "*"
 python-dateutil = "*"
+dropbox = "*"
+pycrypto = "*"
 
 [dev-packages]
 pytest = "*"
+pylint = "*"
+autopep8 = "*"
+rope = "*"
 
 [requires]
 python_version = "3.7"

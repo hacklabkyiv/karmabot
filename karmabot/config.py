@@ -20,6 +20,8 @@ class Config:
         self.AUTO_POST_CHANNEL = os.environ.get('AUTO_POST_CHANNEL', default='').strip('@# ')
         self.AUTO_POST_DAY = int(os.environ.get('AUTO_POST_DAY', default=1))
 
+        self.BACKUP_DROPBOX = os.environ.get('BACKUP_DROPBOX')
+
         self.LOG_LEVEL = logging.getLevelName(os.environ.get('LOG_LEVEL', default='INFO').upper())
 
         logging.basicConfig(format='%(asctime)s %(name)s [%(levelname)s] %(message)s',

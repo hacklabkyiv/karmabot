@@ -9,10 +9,11 @@ from .words import Color
 
 # FIXME: check every where for succeded POST
 class KarmaManager:
-    def __init__(self, cfg, transport, fmt):
+    def __init__(self, cfg, transport, fmt, backup_provider):
         self._config = cfg
         self._transport = transport
         self._format = fmt
+        self._backup = backup_provider
         self._session = get_scoped_session(cfg.DB_URI)
         self._logger = logging.getLogger('KarmaManager')
 
@@ -120,6 +121,11 @@ class KarmaManager:
         now = time.time()
         expired = self._session.query(Voting) \
             .filter(cast(Voting.bot_msg_ts, Float) + self._config.VOTE_TIMEOUT < now).all()
+
+        # in order to avoid needlees backup
+        if not expired:
+            return result
+
         for e in expired:
             self._logger.debug(f'Expired voting: {e}')
 
@@ -142,6 +148,7 @@ class KarmaManager:
             self._session.delete(e)
 
         self._session.commit()
+        self._backup()
         return result
 
     def _close(self, karma_change, success):
