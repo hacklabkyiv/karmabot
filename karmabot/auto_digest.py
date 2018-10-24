@@ -7,6 +7,9 @@ class AutoDigest:
     """
     Monthly users' karma digest. Intended to monthly karma overview.
     """
+
+    __slots__ = ['_day', '_target_date', '_channel', '_func']
+
     def __init__(self, day, channel, func):
         # Auto clamp day value
         self._day = max(1, min(day, 31))

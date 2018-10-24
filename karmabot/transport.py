@@ -5,12 +5,13 @@ import time
 
 
 class Transport:
-    LOGGER = logging.getLogger('Transport')
+    __slots__ = ['client', '_username_cache', '_channel_name_cache', '_logger']
 
     def __init__(self, client):
         self.client = client
         self._username_cache = {}
         self._channel_name_cache = {}
+        self._logger = logging.getLogger('Transport')
 
     @staticmethod
     def create(token):
@@ -18,7 +19,7 @@ class Transport:
         while not client.rtm_connect(with_team_state=False,
                                      auto_reconnect=True,
                                      timeout=15):
-            Transport.LOGGER.debug('Cannot connect to the Slack. Reconnecting in 3seconds...')
+            logging.getLogger('Transport').debug('Cannot connect to the Slack. Reconnecting in 3seconds...')
             time.sleep(3)
         return Transport(client)
 
@@ -49,7 +50,7 @@ class Transport:
             result = self.client.api_call('reactions.get',
                                           channel=channel,
                                           timestamp=ts)
-            Transport.LOGGER.debug(f'Getting reactions: {result}')
+            self._logger.debug(f'Getting reactions: {result}')
 
             if 'message' not in result:
                 return None
@@ -59,7 +60,7 @@ class Transport:
         return r
 
     def post(self, channel, msg, ts=''):
-        Transport.LOGGER.debug(f'Sending message: {msg}')
+        self._logger.debug(f'Sending message: {msg}')
         return self.client.api_call('chat.postMessage',
                                     link_names=1,
                                     as_user=True,
@@ -68,7 +69,7 @@ class Transport:
                                     **msg)
 
     def update(self, channel, msg, ts):
-        Transport.LOGGER.debug(f'Sending update: {msg}')
+        self._logger.debug(f'Sending update: {msg}')
         return self.client.api_call('chat.update',
                                     link_names=1,
                                     as_user=True,

@@ -9,6 +9,9 @@ class Packer:
     """
     packer/unpacker with LZMA compression and AES [CBC mode] encryption
     """
+
+    __slots__ = ['_key', '_chunk_size']
+
     def __init__(self, key: str, chunksize: int = 64*1024):
         """
         :param key: an encryption key. will be shrinked to 32 bytes

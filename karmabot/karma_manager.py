@@ -9,6 +9,8 @@ from .words import Color
 
 # FIXME: check every where for succeded POST
 class KarmaManager:
+    __slots__ = ['_config', '_transport', '_format', '_backup', '_session', '_logger']
+
     def __init__(self, cfg, transport, fmt, backup_provider):
         self._config = cfg
         self._transport = transport

@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 
 
 class BaseBackup(ABC):
+    __slots__ = ['_filenames']
+
     def __init__(self, filenames):
         self._filenames = filenames
 

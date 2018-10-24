@@ -8,6 +8,8 @@ from packer import Packer
 
 
 class DropboxBackup(BaseBackup):
+    __slots__ = ['_logger', '_packer', '_client']
+
     def __init__(self, client, filenames, key):
         super().__init__(filenames)
         self._logger = logging.getLogger('DropboxBackup')
