@@ -8,7 +8,7 @@ sqlalchemy = "*"
 slackclient = "*"
 python-dateutil = "*"
 dropbox = "*"
-pycrypto = "*"
+cryptography = "*"
 
 [dev-packages]
 pytest = "*"
