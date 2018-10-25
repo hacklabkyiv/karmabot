@@ -16,7 +16,7 @@ This means that no karma will be applied unless community react using emoji.*
 
 ## Installation
 
-### Docker
+### 🐳 Docker
 
 Install `docker` and then:
 
@@ -29,7 +29,7 @@ $ git clone https://github.com/dethoter/karmabot && cd karmabot
 This `Dockerfile` from repo contains setup for RaspberryPi.
 You can modify **FROM** field in order to target your distro.
 
-### Locally
+### 💻 Locally
 
 ```sh
 $ pipenv install
@@ -39,9 +39,24 @@ $ env $(cat .env | xargs) pipenv run python ./app.py
 
 ## Usage
 
-1. Add a [Slack Bot](https://api.slack.com/bot-users) integration.
+1. Add a [Slack Bot](https://api.slack.com/bot-users) integration
 2. Invite `karmabot` to any existing channels and all future channels
-3. Run `karmabot`. the following environment variables are supported:
+3. Run `karmabot`
+
+### 📆 Autoposting 
+
+Set a channel in `AUTO_POST_CHANNEL` and a day of a month in `AUTO_POST_DAY` and get a monthly digest.
+
+### 🗄 Backup 
+
+DB backups after each closed voting if a backup provider is configured.
+In order to configure it user shoud pass provider's token to `BACKUP_DROPBOX` env variable.
+
+_Providers:_  
+  - ✅ **Dropbox**  
+  - 🔜 **GDrive** 
+
+### 📋 Environment variables 
 
 | option                      | required? | description                              | default                          |
 | --------------------------- | --------- | ---------------------------------------- | -------------------------------- |
@@ -57,10 +72,11 @@ $ env $(cat .env | xargs) pipenv run python ./app.py
 | `ADMINS`                    | no        | admins who can set karma to users        |                                       |
 | `AUTO_POST_CHANNEL`         | no        | channel to post digest to                |                                       |
 | `AUTO_POST_DAY`             | no        | a day when auto digest will be posted    | `1`                                   |
+| `BACKUP_DROPBOX`            | no        | dropbox app token                        |                                       |
 | `LOG_LEVEL`                 | no        | set log level                            | `INFO`                                |
 
 
-### Commands
+### 📖 Commands
 
 All the commands should be sent into direct messages to **karmabot**.
 
