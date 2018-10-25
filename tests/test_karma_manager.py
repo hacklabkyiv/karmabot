@@ -39,7 +39,7 @@ def data():
     transport.post.return_value = {'ts': '123.000000'}
     fmt.report_karma.return_value = TEST_MSG
 
-    km = KarmaManager(Config(), transport, fmt)
+    km = KarmaManager(Config(), transport, fmt, MagicMock())
     s = new_session()
     km._session = s
     return KarmaManagerWrapper(fmt, transport, s, km)

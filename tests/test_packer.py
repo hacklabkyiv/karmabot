@@ -5,6 +5,12 @@ from karmabot.backup.packer import Packer
 
 TEST_DATA = b'test'
 
+@pytest.fixture
+def filename():
+    with NamedTemporaryFile(mode='wb', delete=False) as o:
+        o.write(TEST_DATA)
+        return o.name
+
 
 def test_pack_unpack(filename):
     encrypted_filename = filename + '.enc'
