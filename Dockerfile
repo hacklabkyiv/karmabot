@@ -1,6 +1,7 @@
 FROM python:3.7-slim-stretch
-RUN apt-get update -y
-RUN apt-get install -y sqlite3 libsqlite3-dev
+RUN apt update -y
+RUN apt-get install -y sqlite3 libsqlite3-dev --no-install-recommends
+RUN apt-get install -y build-essential libssl-dev libffi-dev python3-dev --no-install-recommends
 
 RUN pip install -U pip
 RUN pip install pipenv
