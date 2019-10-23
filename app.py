@@ -1,7 +1,7 @@
-from karmabot.config import Config
-from karmabot.karma_manager import KarmaManager
-from karmabot.transport import Transport
-from karmabot.words import Format
+import yaml
+import logging
+from pprint import pformat
+
 from karmabot.karmabot import Karmabot
 
 
@@ -14,19 +14,13 @@ def get_backup_provider(config):
 
 
 if __name__ == '__main__':
-    config = Config()
+    config = yaml.safe_load(open('config.yml', 'r'))
+    logging_config = yaml.safe_load(open('logging.yml', 'r'))
+    logging_config['root']['level'] = config['log_level']
+    logging.config.dictConfig(logging_config)
+
+    logging.debug('Config: {}'.format(pformat(config)))
+
     b = get_backup_provider(config)
-    t = Transport.create(config.SLACK_BOT_TOKEN)
-    f = Format(config.BOT_LANG,
-               config.UPVOTE_EMOJI,
-               config.DOWNVOTE_EMOJI,
-               config.VOTE_TIMEOUT)
-    m = KarmaManager(cfg=config, 
-                     transport=t, 
-                     fmt=f, 
-                     backup_provider=b)
-    bot = Karmabot(config, 
-                   transport=t, 
-                   fmt=f, 
-                   manager=m)
+    bot = Karmabot(config, backup_provider=b)
     bot.listen()

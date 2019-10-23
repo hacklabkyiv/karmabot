@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "karmabot"
+version = "0.1.0"
+description = "Slack bot that listens for and performs karma operations"
+readme = "README.md"
+licence = "LICENSE"
+authors = ["Evgen Druzhynin <evgen.druzhynin@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+sqlalchemy = "^1.3"
+slackclient = "^2.3"
+python-dateutil = "^2.8"
+cryptography = "^2.8"
+pyyaml = "^5.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+pylint = "^2.4"
+flake8 = "^3.7"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

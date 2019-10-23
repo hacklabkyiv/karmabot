@@ -22,8 +22,9 @@ Install `docker` and then:
 
 ```sh
 $ git clone https://github.com/dethoter/karmabot && cd karmabot
+$ cp config.yml.template config.yml
 # docker build -t karmabot .
-# docker run -d --name karmabot --restart=unless-stopped --env-file=.env -it -v ./:/app karmabot
+# docker run -d --name karmabot --restart=unless-stopped --network=host -it karmabot
 ```
 
 This `Dockerfile` from repo contains setup for RaspberryPi.
@@ -32,8 +33,9 @@ You can modify **FROM** field in order to target your distro.
 ### 💻 Locally
 
 ```sh
+$ cp config.yml.template config.yml
 $ pipenv install
-$ env $(cat .env | xargs) pipenv run python ./app.py
+$ python3 ./app.py
 ```
 
 
@@ -43,37 +45,41 @@ $ env $(cat .env | xargs) pipenv run python ./app.py
 2. Invite `karmabot` to any existing channels and all future channels
 3. Run `karmabot`
 
-### 📆 Autoposting 
+### 📆 Autoposting
 
-Set a channel in `AUTO_POST_CHANNEL` and a day of a month in `AUTO_POST_DAY` and get a monthly digest.
+Set a channel in `auto_post.channel` and a day of a month in `auto_post.day` and get a monthly digest.
 
-### 🗄 Backup 
+### 🗄 Backup
 
 DB backups after each closed voting if a backup provider is configured.
-In order to configure it user shoud pass provider's token to `BACKUP_DROPBOX` env variable.
+In order to configure it user shoud pass provider's token to `backup.dropbox` env variable.
 
-_Providers:_  
-  - ✅ **Dropbox**  
-  - 🔜 **GDrive** 
+_Providers:_
+  - ✅ **Dropbox**
+  - 🔜 **GDrive**
 
-### 📋 Environment variables 
+### 📋 Configuration
 
 | option                      | required? | description                              | default                          |
 | --------------------------- | --------- | ---------------------------------------- | -------------------------------- |
-| `BOT_LANG`                  | no        | options: en, ru                          | en                                    |
-| `DB_URI`                    | **yes**   | path to database (may be any DB that sqlalchemy supports) | `sqlite:///karma.db` |
-| `SLACK_BOT_TOKEN`           | **yes**   | slack RTM token                          |                                       |
-| `INITIAL_USER_KARMA`        | no        | the default amount of user karma         | `0`                                   |
-| `MAX_SHOT`                  | no        | the maximum amount of points that users can give/take at once | `5`              |
-| `VOTE_TIMEOUT`              | no        | a time to wait until a voting closes     | `true`                                |
-| `UPVOTE_EMOJI`              | no        | reactjis to use for upvotes.             | `+1`, `thumbsup`, `thumbsup_all`      |
-| `DOWNVOTE_EMOJI`            | no        | reactjis to use for downvotes.           | `-1`, `thumbsdown`                    |
-| `SELF_KARMA`                | no        | allow users to add/remove karma to themselves | `false`                          |
-| `ADMINS`                    | no        | admins who can set karma to users        |                                       |
-| `AUTO_POST_CHANNEL`         | no        | channel to post digest to                |                                       |
-| `AUTO_POST_DAY`             | no        | a day when auto digest will be posted    | `1`                                   |
-| `BACKUP_DROPBOX`            | no        | dropbox app token                        |                                       |
-| `LOG_LEVEL`                 | no        | set log level                            | `INFO`                                |
+| `log_level`                 | no        | set log level                            | `INFO`                           |
+| `bot.lang`                  | no        | options: en, ru                          | en                               |
+| `bot.slack_token`           | **yes**   | slack RTM token                          |                                  |
+| `bot.admins`                | no        | admins who can set karma to users        |                                  |
+| `karma.initial_value`       | no        | the default amount of user karma         | `0`                              |
+| `karma.max_shot`            | no        | the maximum amount of points that users can give/take at once | `5`         |
+| `karma.vote_timeout`        | no        | a time to wait until a voting closes     | `true`                           |
+| `karma.upvote_emoji`        | no        | reactjis to use for upvotes.             | `+1`, `thumbsup`, `thumbsup_all` |
+| `karma.downvote_emoji`      | no        | reactjis to use for downvotes.           | `-1`, `thumbsdown`               |
+| `karma.self_karma`          | no        | allow users to add/remove karma to themselves | `false`                     |
+| `auto_post.channel`         | no        | channel to post digest to                |                                  |
+| `auto_post.day`             | no        | a day when auto digest will be posted    | `1`                              |
+| `db.type`                   | no        | type of database (may be any DB that sqlalchemy supports) | `postgresql`    |
+| `db.user`                   | no        | user of database                         |                                  |
+| `db.password`               | no        | password for database                    |                                  |
+| `db.host`                   | no        | host of database                         | `127.0.0.1`                      |
+| `db.port`                   | no        | port of database                         | `5432`                           |
+| `db.name`                   | **yes**   | name of database                         | `karma`                          |
 
 
 ### 📖 Commands

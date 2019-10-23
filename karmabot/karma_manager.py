@@ -9,14 +9,24 @@ from .words import Color
 
 # FIXME: check every where for succeded POST
 class KarmaManager:
-    __slots__ = ['_config', '_transport', '_format', '_backup', '_session', '_logger']
+    __slots__ = [
+        '_initial_value', '_max_shot', '_self_karma', '_vote_timeout',
+        '_upvote_emoji', '_downvote_emoji',
+        '_transport', '_format', '_backup', '_session', '_logger'
+    ]
 
-    def __init__(self, cfg, transport, fmt, backup_provider):
-        self._config = cfg
+    def __init__(self, karma_config, db_config, transport, fmt, backup_provider):
+        self._initial_value = karma_config['initial_value']
+        self._max_shot = karma_config['max_shot']
+        self._self_karma = karma_config['self_karma']
+        self._vote_timeout = karma_config['vote_timeout']
+        self._upvote_emoji = karma_config['upvote_emoji']
+        self._downvote_emoji = karma_config['downvote_emoji']
+
         self._transport = transport
         self._format = fmt
         self._backup = backup_provider
-        self._session = get_scoped_session(cfg.DB_URI)
+        self._session = get_scoped_session(db_config)
         self._logger = logging.getLogger('KarmaManager')
 
     def get(self, user_id, channel):
@@ -24,8 +34,8 @@ class KarmaManager:
         if karma:
             value = karma.karma
         else:
-            value = self._config.INITIAL_USER_KARMA
-            self._session.add(Karma(user_id=user_id, karma=self._config.INITIAL_USER_KARMA))
+            value = self._initial_value
+            self._session.add(Karma(user_id=user_id, karma=value))
             self._session.commit()
 
         username = self._transport.lookup_username(user_id)
@@ -64,12 +74,14 @@ class KarmaManager:
     def pending(self, channel):
         result = ['*initiator* | *receiver* | *channel* | *karma* | *expired*']
         for r in self._session.query(Voting).all():
-            time_left = datetime.fromtimestamp(float(r.initial_msg_ts)) + timedelta(seconds=self._config.VOTE_TIMEOUT)
-            item = '{} | {} | {} | {} | {}'.format(self._transport.lookup_username(r.initiator_id),
-                                                   self._transport.lookup_username(r.user_id),
-                                                   self._transport.lookup_channel_name(r.channel),
-                                                   r.karma,
-                                                   time_left.isoformat())
+            dt = timedelta(seconds=self._vote_timeout)
+            time_left = datetime.fromtimestamp(float(r.initial_msg_ts)) + dt
+            item = '{} | {} | {} | {} | {}'.format(
+                self._transport.lookup_username(r.initiator_id),
+                self._transport.lookup_username(r.user_id),
+                self._transport.lookup_channel_name(r.channel),
+                r.karma,
+                time_left.isoformat())
             result.append(item)
 
         if len(result) == 1:
@@ -84,7 +96,8 @@ class KarmaManager:
         # Check for an already existing voting
         instance = self._session.query(Voting).filter_by(uuid=(ts, channel)).first()
         if instance:
-            self._logger.fatal(f'Voting already exists: ts={ts}, channel={channel}')
+            self._logger.fatal('Voting already exists: ts=%s, channel=%s',
+                               ts, channel)
             return False
 
         # Report an error if a request has not been parsed
@@ -122,19 +135,21 @@ class KarmaManager:
         result = True
         now = time.time()
         expired = self._session.query(Voting) \
-            .filter(cast(Voting.bot_msg_ts, Float) + self._config.VOTE_TIMEOUT < now).all()
+            .filter(cast(Voting.bot_msg_ts, Float) + self._vote_timeout < now).all()
 
         # in order to avoid needlees backup
         if not expired:
             return result
 
         for e in expired:
-            self._logger.debug(f'Expired voting: {e}')
+            self._logger.debug('Expired voting: %s', e)
 
-            reactions = self._transport.reactions_get(e.channel, e.initial_msg_ts, e.bot_msg_ts)
+            reactions = self._transport.reactions_get(e.channel,
+                                                      e.initial_msg_ts,
+                                                      e.bot_msg_ts)
             if reactions is None:
                 result = False
-                self._logger.error(f'Failed to get messages for: {e}')
+                self._logger.error('Failed to get messages for: %s', e)
                 self._session.delete(e)
                 continue
 
@@ -144,7 +159,7 @@ class KarmaManager:
                 if karma:
                     karma.karma += e.karma
                 else:
-                    self._session.add(Karma(user_id=e.user_id, karma=self._config.INITIAL_USER_KARMA + e.karma))
+                    self._session.add(Karma(user_id=e.user_id, karma=self._initial_value + e.karma))
 
             self._close(e, success)
             self._session.delete(e)
@@ -155,16 +170,16 @@ class KarmaManager:
 
     def _close(self, karma_change, success):
         username = self._transport.lookup_username(karma_change.user_id)
-        return self._transport.update(karma_change.channel,
-                                             self._format.voting_result(username, karma_change.karma, success),
-                                             karma_change.bot_msg_ts)
+        result = self._format.voting_result(username, karma_change.karma, success)
+        return self._transport.update(karma_change.channel, result,
+                                      karma_change.bot_msg_ts)
 
     def _determine_success(self, reactions):
-        self._logger.debug(f'Reactions: {reactions}')
-        upvotes = [reactions[r] for r in self._config.UPVOTE_EMOJI if r in reactions]
-        downvotes = [reactions[r] for r in self._config.DOWNVOTE_EMOJI if r in reactions]
-        self._logger.debug(f'Upvotes: {upvotes}')
-        self._logger.debug(f'Downvotes: {downvotes}')
+        self._logger.debug('Reactions: %s', reactions)
+        upvotes = [reactions[r] for r in self._upvote_emoji if r in reactions]
+        downvotes = [reactions[r] for r in self._downvote_emoji if r in reactions]
+        self._logger.debug('Upvotes: %s', upvotes)
+        self._logger.debug('Downvotes: %s', downvotes)
         return sum(upvotes) - sum(downvotes) > 0
 
     def _karma_change_sanity_check(self,
@@ -172,10 +187,10 @@ class KarmaManager:
                                    user_id,
                                    bot_id,
                                    karma):
-        if not self._config.SELF_KARMA and initiator_id == user_id:
+        if not self._self_karma and initiator_id == user_id:
             return self._format.strange_error()
         if user_id == bot_id:
             return self._format.robo_error()
-        if abs(karma) > self._config.MAX_SHOT:
-            return self._format.max_shot_error(self._config.MAX_SHOT)
+        if abs(karma) > self._max_shot:
+            return self._format.max_shot_error(self._max_shot)
         return None

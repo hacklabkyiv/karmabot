@@ -1,7 +1,10 @@
 build/*
 env/*
 env_vars.py
+.venv/
 *.pyc
 .idea/
+.vscode/
 karma.db
 .pytest_cache/
+.mypy_cache/

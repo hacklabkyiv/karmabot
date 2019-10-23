@@ -1,19 +1,19 @@
-FROM python:3.7-slim-stretch
+FROM python:3.7-slim-buster
 RUN apt update -y
-RUN apt-get install -y sqlite3 libsqlite3-dev --no-install-recommends
+# RUN apt-get install -y sqlite3 libsqlite3-dev --no-install-recommends
 RUN apt-get install -y build-essential libssl-dev libffi-dev python3-dev --no-install-recommends
 
 RUN pip install -U pip
-RUN pip install pipenv
+RUN pip install poetry
 
-COPY Pipfile Pipfile.lock /tmp/dependencies/
+WORKDIR /app
+COPY pyproject.toml poetry.lock /app/
 
-ENV PIPENV_PIPFILE /tmp/dependencies/Pipfile
-RUN pipenv install --system --deploy
+RUN poetry config settings.virtualenvs.create false
+RUN poetry install --no-dev --no-interaction --no-ansi
 
 COPY karmabot/ /app/karmabot/
-COPY app.py /app/
-WORKDIR /app
+COPY config.yml logging.yml app.py /app/
 
 ENTRYPOINT ["python"]
 CMD ["app.py"]
