@@ -41,7 +41,7 @@ class Karmabot:
 
         self._admins = bot_config['admins']
 
-        self._transport = Transport.create(bot_config['slack_token'])
+        self._transport = Transport(bot_config['slack_token'])
         self._format = Format(bot_config['lang'],
                               karma_config['upvote_emoji'],
                               karma_config['downvote_emoji'],
@@ -74,18 +74,16 @@ class Karmabot:
 
     def listen(self):
         while True:
-            events = self._transport.read()
-            for event in events:
-                self._logger.debug('Processing event: %s', event)
-                if self._handle_event(event):
-                    continue
-                self._logger.debug('Leaving unhandled: %s', event)
-
             self._manager.close_expired_votes()
             self._auto_digest_cmd()
 
-            if not events:
-                time.sleep(0.2)
+            if not self._transport.events:
+                time.sleep(0.1)
+
+            event = self._transport.events.pop(0)
+            self._logger.debug('Processing event: %s', event)
+            if not self._handle_event(event):
+                self._logger.debug('Leaving unhandled: %s', event)
 
     def _handle_dm_cmd(self, initiator_id, channel, text):
         # Handling only DM messages and skipping own messages

@@ -1,30 +1,25 @@
 import logging
 from collections import Counter
-from slackclient import SlackClient
+from slack import RTMClient, WebClient
 import time
 
 
 class Transport:
     __slots__ = ['client', '_username_cache', '_channel_name_cache', '_logger']
 
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, token):
+        self._slack_reader = RTMClient(token=token)
+        self._slack_reader.start()
+        self.client = WebClient(token=token)
+
         self._username_cache = {}
         self._channel_name_cache = {}
         self._logger = logging.getLogger('Transport')
+        self.events = []
 
-    @staticmethod
-    def create(token):
-        client = SlackClient(token)
-        while not client.rtm_connect(with_team_state=False,
-                                     auto_reconnect=True,
-                                     timeout=15):
-            logging.getLogger('Transport').debug('Cannot connect to the Slack. Reconnecting in 3seconds...')
-            time.sleep(3)
-        return Transport(client)
-
-    def read(self):
-        return self.client.rtm_read()
+    @RTMClient.run_on(event='message')
+    def read(self, **payload):
+        self.events.append(payload['data'])
 
     def lookup_username(self, user_id):
         user = user_id.strip('<>@')
