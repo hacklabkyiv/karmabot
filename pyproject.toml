@@ -13,6 +13,7 @@ slackclient = "^2.3"
 python-dateutil = "^2.8"
 cryptography = "^2.8"
 pyyaml = "^5.1"
+babel = "^2.7"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

@@ -1,89 +1,4 @@
-_ = {
-    'en': {
-        'hello': """Hi! I\'m *karmabot*. You can do: 
-- In any public channel 
-    `@karmabot @username +++ blah blah` 
-    If the most of you agree, the username will get a karma. Nothing will happen in any other case.
-
-- In direct messages with bot:
-    - `get @username` - get karma value for `username`
-    - `set @username <KARMA>` - set karma value for `username`
-    - `digest` - show users' karma in descending order (zero karma is skipped)
-    - `help` - show this message
-    - `config` - show config for this execution""",
-#############
-        'new_voting': """{} *A new voting for {:+d} karma for user @{}*
- You can vote using emoji for that or initial message.
- _FOR:_ {}
- _AGAINST_: {}
- Other emoji will be ignored. The voting will be *{}* long from now""",
-#############
-        'voting_result_success': """{} *The voting is finished*
-@{} receives {:+d} karma {}""",
-#############
-        'voting_result_nothing': """{} *The voting is finished*
-@{} receives nothing {}""",
-#############
-        'report_karma': '@{}: {} karma',
-#############
-        'parsing_error': """Сould not calculate what the fuck one has typed there {}
-A request for karma change should be like `@karmabot @username +++ blah blah`""",
-#############
-        'max_shot_error': 'Max damage is {} karma',
-#############
-        'strange_error': 'This, at least, looks strange {}',
-#############
-        'robo_error': 'Robots can also be offended {}',
-#############
-        'cmd_error': 'One does not simply handle a command',
-#############
-        'time': {'many': ('weeks', 'days', 'hours', 'minutes', 'seconds'),
-                 'one': ('week', 'day', 'hour', 'minute', 'second')},
-    },
-
-    'ru': {
-        'hello': """Привет! Я *karmabot*. Вы можете делать: 
-- В любом публичном канале:
-    `@karmabot @username +++ бла бла` 
-    Если большинство согласно, username получит свое. В любом другом случае ничего не случится.
-
-- В личных сообщениях с ботом:
-    - `get @username` - получить карму `username`
-    - `set @username <KARMA>` - установить новое значение кармы для `username`
-    - `digest` - показать карму пользователей в нисходящем порядке (нулевая опускается)
-    - `help` - показать это сообщение
-    - `config` - показать конфиг для этого запуска
-""",
-#############
-        'new_voting': """{} *Голосование за {:+d} кармы пользователю @{}* 
-Голосовать нужно при помощи emoji к этому или оригинальному сообщению.
-_ЗА:_ {}
-_ПРОТИВ:_ {}
-Остальные игнорируются. Голосование будет длиться *{}* с текущего времени""",
-#############
-        'voting_result_success': """{} *Голосование закончено*
-@{} получает {:+d} кармы {}""",
-#############
-        'voting_result_nothing': """{} *Голосование закончено*
-@{} ничего не получает {}""",
-#############
-        'report_karma': '@{}: {} кармы',
-#############
-        'parsing_error': """Не удалось вычислить шо там пописано {}
-Запрос на изменение кармы должен быть типа `@karmabot @username +++ бла бла`""",
-#############
-        'max_shot_error': 'Максимальный урон {} кармы',
-#############
-        'strange_error': 'Это, как минимум, выглядит странно {}',
-#############
-        'robo_error': 'У роботов тоже есть чувства {}',
-#############
-        'cmd_error': 'Нельзя просто взять и обработать команду',
-#############
-        'time': {'many': ('недель', 'дней', 'часов', 'минут', 'секунд'),
-                 'one': ('неделю', 'день', 'час', 'минуту', 'секунду')},
-    }
-}
+import gettext
 
 
 class Status:
@@ -104,7 +19,9 @@ class Format:
                   1)
 
     def __init__(self, lang, votes_up_emoji, votes_down_emoji, timeout):
-        self._messages = _.get(lang, 'en')
+        translate = gettext.translation(domain='messages', localedir='lang',
+                                        languages=(lang,), fallback=True)
+        translate.install()
         self._votes_up_emoji = votes_up_emoji
         self._votes_down_emoji = votes_down_emoji
         self._display_time = self.display_time(int(timeout))
@@ -130,47 +47,44 @@ class Format:
             value = seconds // count
             if value:
                 seconds -= value * count
-                if value == 1:
-                    name = self._messages['time'].get('one')[i]
-                else:
-                    name = self._messages['time'].get('many')[i]
-                result.append("{} {}".format(value, name))
+                name = _('time').split()[i]
+                result.append("{}{}".format(value, name))
         return ', '.join(result[:granularity])
 
     def hello(self):
-        return Format.message(Color.INFO, self._messages['hello'])
+        return Format.message(Color.INFO, _('hello'))
 
     def new_voting(self, username, karma):
-        text = self._messages['new_voting'].format(Status.OPEN, karma, username,
-                                                   ':' + ': :'.join(self._votes_up_emoji) + ':',
-                                                   ':' + ': :'.join(self._votes_down_emoji) + ':',
-                                                   self._display_time)
+        text = _('new_voting').format(Status.OPEN, karma, username,
+                                      ':' + ': :'.join(self._votes_up_emoji) + ':',
+                                      ':' + ': :'.join(self._votes_down_emoji) + ':',
+                                      self._display_time)
         return Format.message(Color.INFO, text)
 
     def voting_result(self, username, karma, success):
         if success:
             emoji = ':tada:' if karma > 0 else ':face_palm:'
-            text = self._messages['voting_result_success'].format(Status.CLOSED, username, karma, emoji)
+            text = _('voting_result_success').format(Status.CLOSED, username, karma, emoji)
         else:
             emoji = ':fidget_spinner:'
-            text = self._messages['voting_result_nothing'].format(Status.CLOSED, username, emoji)
+            text = _('voting_result_nothing').format(Status.CLOSED, username, emoji)
 
         return Format.message(Color.INFO, text)
 
     def report_karma(self, username, karma):
-        return Format.message(Color.INFO, self._messages['report_karma'].format(username, karma))
+        return Format.message(Color.INFO, _('report_karma').format(username, karma))
 
     def parsing_error(self):
-        return Format.message(Color.ERROR, self._messages['parsing_error'].format(':robot_face:'))
+        return Format.message(Color.ERROR, _('parsing_error').format(':robot_face:'))
 
     def max_shot_error(self, max_shot):
-        return Format.message(Color.ERROR, self._messages['max_shot_error'].format(max_shot))
+        return Format.message(Color.ERROR, _('max_shot_error').format(max_shot))
 
     def strange_error(self):
-        return Format.message(Color.ERROR, self._messages['strange_error'].format(':grimacing:'))
+        return Format.message(Color.ERROR, _('strange_error').format(':grimacing:'))
 
     def robo_error(self):
-        return Format.message(Color.ERROR, self._messages['robo_error'].format(':robot_face:'))
+        return Format.message(Color.ERROR, _('robo_error').format(':robot_face:'))
 
     def cmd_error(self):
-        return Format.message(Color.ERROR, self._messages['cmd_error'], image='https://i.imgflip.com/2cuafm.jpg')
+        return Format.message(Color.ERROR, _('cmd_error'), image='https://i.imgflip.com/2cuafm.jpg')

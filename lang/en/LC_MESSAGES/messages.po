@@ -1,0 +1,87 @@
+# English translations for PROJECT.
+# Copyright (C) 2019 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2019.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2019-11-03 22:39+0200\n"
+"PO-Revision-Date: 2019-11-03 22:46+0200\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: words.py:10
+msgid "hello"
+msgstr ""
+"Hi! I'm *karmabot*. You can do:\n"
+"- In any public channel\n"
+"    `@karmabot @username +++ blah blah`\n"
+"    If the most of you agree, the username will get a karma. Nothing will"
+" happen in any other case.\n"
+"\n"
+"- In direct messages with bot:\n"
+"    - `get @username` - get karma value for `username`\n"
+"    - `set @username <KARMA>` - set karma value for `username`\n"
+"    - `digest` - show users' karma in descending order (zero karma is "
+"skipped)\n"
+"    - `help` - show this message\n"
+"    - `config` - show config for this execution"
+
+#: words.py:23
+msgid "new_voting"
+msgstr ""
+"{} *A new voting for {:+d} karma for user @{}*\n"
+" You can vote using emoji for that or initial message.\n"
+" _FOR:_ {}\n"
+" _AGAINST_: {}\n"
+" Other emoji will be ignored. The voting will be *{}* long from now"
+
+#: words.py:30
+msgid "voting_result_success"
+msgstr ""
+"{} *The voting is finished*\n"
+"@{} receives {:+d} karma {}"
+
+#: words.py:34
+msgid "voting_result_nothing"
+msgstr ""
+"{} *The voting is finished*\n"
+"@{} receives nothing {}"
+
+#: words.py:37
+msgid "report_karma"
+msgstr "@{}: {} karma"
+
+#: words.py:39
+msgid "parsing_error"
+msgstr ""
+"Сould not calculate what the fuck one has typed there {}\n"
+"A request for karma change should be like `@karmabot @username +++ blah blah`"
+
+#: words.py:43
+msgid "max_shot_error"
+msgstr "Max damage is {} karma"
+
+#: words.py:45
+msgid "strange_error"
+msgstr "This, at least, looks strange {}"
+
+#: words.py:47
+msgid "robo_error"
+msgstr "Robots can also be offended {}"
+
+#: words.py:49
+msgid "cmd_error"
+msgstr "One does not simply handle a command"
+
+#: words.py:54
+msgid "time"
+msgstr "w d h min sec"
