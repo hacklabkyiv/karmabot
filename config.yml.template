@@ -16,6 +16,7 @@ karma:
   max_shot: 5
   self_karma: Yes
   vote_timeout: 10800.0 # 3 hours
+  keep_history: 7884000.0 # 3 months
   upvote_emoji:
     - "+1"
     - "partyparrot"

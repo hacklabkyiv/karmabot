@@ -1,6 +1,8 @@
 import logging
 import time
 from collections import namedtuple
+from slack import RTMClient
+
 from karmabot.parse import Parse
 from karmabot.words import Format, Color
 from karmabot.auto_digest import AutoDigest
@@ -29,8 +31,7 @@ def _configure_auto_digest(cfg, transport, manager):
 
 
 class Karmabot:
-    REQUIRED_MESSAGE_FIELDS = ('user', 'text', 'ts')
-    REQUIRED_EVENT_FIELDS = ('type', 'channel')
+    REQUIRED_MESSAGE_FIELDS = ('user', 'text', 'ts', 'type', 'channel')
 
     def __init__(self, cfg, backup_provider):
         self._config = cfg
@@ -72,18 +73,18 @@ class Karmabot:
                     executor=self._cmd_help, admin_only=False),
         ]
 
+        self._slack_reader = RTMClient(token=bot_config['slack_token'])
+        self._slack_reader.start()
+
     def listen(self):
         while True:
-            self._manager.close_expired_votes()
+            now = time.time()
+            self._manager.close_expired_votings(now)
+            self._manager.remove_old_votings()
             self._auto_digest_cmd()
 
             if not self._transport.events:
                 time.sleep(0.1)
-
-            event = self._transport.events.pop(0)
-            self._logger.debug('Processing event: %s', event)
-            if not self._handle_event(event):
-                self._logger.debug('Leaving unhandled: %s', event)
 
     def _handle_dm_cmd(self, initiator_id, channel, text):
         # Handling only DM messages and skipping own messages
@@ -114,42 +115,45 @@ class Karmabot:
         self._transport.post(channel, self._format.cmd_error())
         return False
 
-    def _handle_event(self, event):
-        if not all(r in event for r in self.REQUIRED_EVENT_FIELDS):
+    @RTMClient.run_on(event='team_join')
+    def _handle_team_join(self, **payload):
+        event = payload['data']
+        self._logger.debug('Processing event: %s', event)
+        user_id = event['user']['id']
+        new_dm = self._transport.client.api_call('im.open', user=user_id)
+        self._transport.post(new_dm['channel']['id'], self._format.hello())
+
+        self._logger.info('Team joined by user_id=%s', user_id)
+        return True
+
+    @RTMClient.run_on(event='message')
+    def _handle_message(self, **payload):
+        event = payload['data']
+        self._logger.debug('Processing event: %s', event)
+
+        if not all(r in event for r in self.REQUIRED_MESSAGE_FIELDS):
+            self._logger.debug('Not enough fields for: %s', event)
             return False
 
-        event_type = event['type']
-        if event_type == 'team_join':
-            user_id = event['user']['id']
-            new_dm = self._transport.client.api_call('im.open', user=user_id)
-            self._transport.post(new_dm['channel']['id'], self._format.hello())
+        initiator_id = event['user']
+        channel = event['channel']
+        text = event['text']
+        ts = event['ts']
 
-            self._logger.info('Team joined by user_id=%s', user_id)
+        if self._handle_dm_cmd(initiator_id, channel, text):
             return True
 
-        if event_type == 'message':
-            if not all(f in event for f in self.REQUIRED_MESSAGE_FIELDS):
-                return False
+        # Don't handle requests from private channels (aka groups)
+        if channel.startswith('G'):
+            self._logger.debug('Skip message in group %s', channel)
+            return False
 
-            initiator_id = event['user']
-            channel = event['channel']
-            text = event['text']
-            ts = event['ts']
-
-            if self._handle_dm_cmd(initiator_id, channel, text):
-                return True
-
-            # Don't handle requests from private channels (aka groups)
-            if channel.startswith('G'):
-                return False
-
-            # Handle only messages with `@karmabot` at the beginning
-            user_id = Parse.user_mention(text)
-            if not user_id or not self._is_me(user_id):
-                return False
-            return self._manager.create(initiator_id, channel, text, ts)
-
-        return False
+        # Handle only messages with `@karmabot` at the beginning
+        user_id = Parse.user_mention(text)
+        if not user_id or not self._is_me(user_id):
+            self._logger.debug('Skip message not for bot: %s', text)
+            return False
+        return self._manager.create(initiator_id, channel, text, ts)
 
     def _cmd_help(self, channel):
         self._transport.post(channel, self._format.hello())

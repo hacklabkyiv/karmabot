@@ -11,152 +11,155 @@ from karmabot.orm import get_scoped_session, Karma, Voting
 from .common import *
 
 
-class Config:
-    DB_URI = 'sqlite:///:memory:'
-    INITIAL_USER_KARMA = 888
-    UPVOTE_EMOJI = ['+1']
-    DOWNVOTE_EMOJI = []
-    VOTE_TIMEOUT = 0.1
-    SELF_KARMA = False
-    MAX_SHOT = 10
+CONFIG = {
+    'db': {
+        'type': 'sqlite',
+        'name': ':memory:',
+    },
+    'karma': {
+        'initial_value': 888,
+        'upvote_emoji': ['+1'],
+        'downvote_emoji': ['-1'],
+        'vote_timeout': 0.1,
+        'self_karma': False,
+        'max_shot': 10,
+        'keep_history': 100000,
+    }
+}
 
 
-KarmaManagerWrapper = namedtuple('KarmaManagerWrapper', 'fmt, transport, session, km')
-
-
+@pytest.fixture
 def new_session():
-    s = get_scoped_session(Config.DB_URI)
+    s = get_scoped_session(CONFIG['db'])
     for u, k in SAMPLE_KARMA.items():
         s.add(Karma(user_id=u, karma=k))
     s.commit()
     return s
 
+
 @pytest.fixture
-def data():
-    fmt = MagicMock()
+def transport():
     transport = MagicMock()
     transport.lookup_username.return_value = TEST_USERNAME
     transport.post.return_value = {'ts': '123.000000'}
+    return transport
+
+
+@pytest.fixture
+def fmt():
+    fmt = MagicMock()
     fmt.report_karma.return_value = TEST_MSG
-
-    km = KarmaManager(Config(), transport, fmt, MagicMock())
-    s = new_session()
-    km._session = s
-    return KarmaManagerWrapper(fmt, transport, s, km)
+    return fmt
 
 
-def test_get_existing(data):
-    data.km.get(TEST_USER, TEST_CHANNEL)
+@pytest.fixture
+def km(transport, fmt, new_session):
+    km = KarmaManager(CONFIG['karma'], CONFIG['db'], transport, fmt, MagicMock())
+    km._session = new_session
+    return km
 
-    data.transport.lookup_username.assert_called_with(TEST_USER)
-    data.fmt.report_karma.assert_called_with(TEST_USERNAME, TEST_KARMA)
-    data.transport.post.assert_called_with(TEST_CHANNEL, TEST_MSG)
 
-def test_get_non_existing(data):
-    data.km.get('non_existing_user', TEST_CHANNEL)
+def test_get_existing(km):
+    km.get(TEST_USER, TEST_CHANNEL)
 
-    data.transport.lookup_username.assert_called_with('non_existing_user')
-    data.fmt.report_karma.assert_called_with(TEST_USERNAME, Config.INITIAL_USER_KARMA)
-    data.transport.post.assert_called_with(TEST_CHANNEL, TEST_MSG)
+    km._transport.lookup_username.assert_called_with(TEST_USER)
+    km._format.report_karma.assert_called_with(TEST_USERNAME, TEST_KARMA)
+    km._transport.post.assert_called_with(TEST_CHANNEL, TEST_MSG)
 
-def test_set_existing(data):
+def test_get_non_existing(km):
+    km.get('non_existing_user', TEST_CHANNEL)
+
+    km._transport.lookup_username.assert_called_with('non_existing_user')
+    km._format.report_karma.assert_called_with(
+        TEST_USERNAME, CONFIG['karma']['initial_value'])
+    km._transport.post.assert_called_with(TEST_CHANNEL, TEST_MSG)
+
+def test_set_existing(km):
     karma = 888
-    data.km.set(TEST_USER, karma, TEST_CHANNEL)
-    assert data.session.query(Karma).filter_by(user_id=TEST_USER).first().karma == karma
+    km.set(TEST_USER, karma, TEST_CHANNEL)
+    assert km._session.query(Karma).filter_by(user_id=TEST_USER).first().karma == karma
 
-    data.transport.lookup_username.assert_called_with(TEST_USER)
-    data.fmt.report_karma.assert_called_with(TEST_USERNAME, karma)
-    data.transport.post.assert_called_with(TEST_CHANNEL, TEST_MSG)
+    km._transport.lookup_username.assert_called_with(TEST_USER)
+    km._format.report_karma.assert_called_with(TEST_USERNAME, karma)
+    km._transport.post.assert_called_with(TEST_CHANNEL, TEST_MSG)
 
-def test_set_non_existing(data):
+def test_set_non_existing(km):
     karma = 888
-    data.km.set('non_existing_user', karma, TEST_CHANNEL)
-    assert data.session.query(Karma).filter_by(user_id='non_existing_user').first().karma == karma
+    km.set('non_existing_user', karma, TEST_CHANNEL)
+    assert km._session.query(Karma).filter_by(user_id='non_existing_user').first().karma == karma
 
-    data.transport.lookup_username.assert_called_with('non_existing_user')
-    data.fmt.report_karma.assert_called_with(TEST_USERNAME, karma)
-    data.transport.post.assert_called_with(TEST_CHANNEL, TEST_MSG)
+    km._transport.lookup_username.assert_called_with('non_existing_user')
+    km._format.report_karma.assert_called_with(TEST_USERNAME, karma)
+    km._transport.post.assert_called_with(TEST_CHANNEL, TEST_MSG)
 
-def test_digest(data):
-    data.km.digest(TEST_CHANNEL)
+def test_digest(km):
+    km.digest(TEST_CHANNEL)
 
     calls = [call(u) for u, k in SAMPLE_KARMA.items() if k != 0]
 
-    data.transport.lookup_username.assert_has_calls(calls=calls, any_order=True)
-    data.fmt.message.assert_called_with(Color.INFO, ANY)
-    data.transport.post.assert_called_with(TEST_CHANNEL, ANY)
+    km._transport.lookup_username.assert_has_calls(calls=calls, any_order=True)
+    km._format.message.assert_called_with(Color.INFO, ANY)
+    km._transport.post.assert_called_with(TEST_CHANNEL, ANY)
 
-def test_pending_print(data):
-    initial_msg_ts = '1.0'
-    data.session.add(Voting(initial_msg_ts=initial_msg_ts,
-                            bot_msg_ts='1.1',
-                            channel=TEST_CHANNEL,
-                            user_id=TEST_USER,
-                            initiator_id=TEST_USER,
-                            karma=1,
-                            text=f'@bot @{TEST_USER} +'))
-    data.session.commit()
+def test_pending_print(km):
+    message_ts = '1.0'
+    km._session.add(Voting(message_ts=message_ts,
+                           bot_message_ts='1.1',
+                           channel=TEST_CHANNEL,
+                           target_id=TEST_USER,
+                           initiator_id=TEST_USER,
+                           karma=1,
+                           message_text=f'@bot @{TEST_USER} +'))
+    km._session.commit()
 
-    data.transport.lookup_channel_name.return_value = 'general'
-    data.km.pending(TEST_CHANNEL)
+    km._transport.lookup_channel_name.return_value = 'general'
+    km.pending(TEST_CHANNEL)
 
-    expired = datetime.fromtimestamp(float(initial_msg_ts)) + timedelta(seconds=Config.VOTE_TIMEOUT)
+    expired = datetime.fromtimestamp(float(message_ts)) + timedelta(
+        seconds=CONFIG['karma']['vote_timeout'])
     expired = expired.isoformat()
 
     expect = '\n'.join(('*initiator* | *receiver* | *channel* | *karma* | *expired*',
                         f'test_user | test_user | general | 1 | {expired}'))
-    data.fmt.message.assert_called_with(Color.INFO, expect)
+    km._format.message.assert_called_with(Color.INFO, expect)
 
-def test_create(data):
-    text = '@karmabot @user_id ++'
+def test_create(km):
+    text = '@karmabot @target_id ++'
     ts = 101.0
 
     with patch('karmabot.parse.Parse.karma_change') as mock_karma_change:
-        mock_karma_change.return_value = 'karmabot', 'user_id', 2
-        data.km.create('init_id', TEST_CHANNEL, text, ts)
+        mock_karma_change.return_value = 'karmabot', 'target_id', 2
+        km.create('init_id', TEST_CHANNEL, text, ts)
 
-    obj = data.session.query(Voting).first()
-    assert float(obj.initial_msg_ts) == ts
-    assert float(obj.bot_msg_ts) == float('123.000000')
+    obj = km._session.query(Voting).first()
+    assert float(obj.message_ts) == ts
+    assert float(obj.bot_message_ts) == float('123.000000')
     assert obj.channel == TEST_CHANNEL
-    assert obj.user_id == 'user_id'
+    assert obj.target_id == 'target_id'
     assert obj.initiator_id == 'init_id'
     assert obj.karma == 2
-    assert obj.text == text
+    assert obj.message_text == text
 
+@pytest.mark.parametrize('votes, result_karma', (
+    ({}, TEST_KARMA),
+    ({'+1': 1}, 2),
+), ids=('skipped', 'up'))
+def test_close_expired_votes(km, votes, result_karma):
+    km._transport.reactions_get.return_value = Counter(votes)
 
-def test_close_expired_votes_skipped(data):
-    data.transport.reactions_get.return_value = Counter()
-
-    ts = time.time()
-    expected = Voting(initial_msg_ts=ts,
-                      bot_msg_ts=ts,
-                      channel=TEST_CHANNEL,
-                      user_id=TEST_USER,
+    now = datetime.now()
+    ts = now.timestamp()
+    expected = Voting(created=now,
                       initiator_id='init_id',
-                      karma=2,
-                      text='@karmabot @user_id ++')
-    data.session.add(expected)
-
-    time.sleep(Config.VOTE_TIMEOUT)
-    data.km.close_expired_votes()
-
-    assert data.session.query(Karma).filter_by(user_id=TEST_USER).first().karma == TEST_KARMA
-
-def test_close_expired_votes_up(data):
-    data.transport.reactions_get.return_value = Counter({'+1': 1})
-
-    ts = time.time()
-    expected = Voting(initial_msg_ts=ts,
-                      bot_msg_ts=ts,
+                      target_id=TEST_USER,
                       channel=TEST_CHANNEL,
-                      user_id=TEST_USER,
-                      initiator_id='init_id',
-                      karma=2,
-                      text='@karmabot @user_id ++')
-    data.session.add(expected)
+                      message_ts=ts,
+                      bot_message_ts=ts,
+                      message_text='@karmabot @target_id ++',
+                      karma=2)
+    km._session.add(expected)
 
-    time.sleep(Config.VOTE_TIMEOUT)
-    data.km.close_expired_votes()
+    now += timedelta(seconds=CONFIG['karma']['vote_timeout'])
+    km.close_expired_votings(now)
 
-    assert data.session.query(Karma).filter_by(user_id=TEST_USER).first().karma == 2
+    assert km._session.query(Karma).filter_by(user_id=TEST_USER).first().karma == result_karma

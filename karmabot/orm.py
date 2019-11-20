@@ -1,5 +1,6 @@
+from datetime import datetime
 from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String, Float, Text
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Boolean
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -47,21 +48,19 @@ class Karma(ORM_BASE):
 
 
 class Voting(ORM_BASE):
-    __tablename__ = 'pending_karma'
+    __tablename__ = 'karma_voting'
 
     id = Column(Integer, primary_key=True)
-    initial_msg_ts = Column(String, nullable=False)
-    bot_msg_ts = Column(String, nullable=False)
-    channel = Column(String(256), nullable=False)
-    user_id = Column(String(256), nullable=False)
+    created = Column(DateTime, nullable=False, default=datetime.now())
+    closed = Column(Boolean, nullable=False, default=False)
     initiator_id = Column(String(256), nullable=False)
+    target_id = Column(String(256), nullable=False)
+    channel = Column(String(256), nullable=False)
+    message_ts = Column(String, nullable=False)
+    bot_message_ts = Column(String, nullable=False)
+    message_text = Column(Text, nullable=False)
     karma = Column(Integer, nullable=False)
-    text = Column(Text, nullable=False)
 
     @hybrid_property
     def uuid(self):
-        return self.initial_msg_ts, self.channel
-
-    def __repr__(self):
-        return f'<Voting(initial_msg_ts={self.initial_msg_ts}, bot_msg_ts={self.bot_msg_ts}, channel={self.channel}, \
-used_id={self.user_id}, initiator_id={self.initiator_id}, karma={self.karma}, text={self.text})>'
+        return self.message_ts, self.channel

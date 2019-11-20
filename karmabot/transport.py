@@ -1,6 +1,6 @@
 import logging
 from collections import Counter
-from slack import RTMClient, WebClient
+from slack import WebClient
 import time
 
 
@@ -8,18 +8,11 @@ class Transport:
     __slots__ = ['client', '_username_cache', '_channel_name_cache', '_logger']
 
     def __init__(self, token):
-        self._slack_reader = RTMClient(token=token)
-        self._slack_reader.start()
         self.client = WebClient(token=token)
 
         self._username_cache = {}
         self._channel_name_cache = {}
         self._logger = logging.getLogger('Transport')
-        self.events = []
-
-    @RTMClient.run_on(event='message')
-    def read(self, **payload):
-        self.events.append(payload['data'])
 
     def lookup_username(self, user_id):
         user = user_id.strip('<>@')
