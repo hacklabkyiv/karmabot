@@ -19,7 +19,7 @@ class Transport:
         username = self._username_cache.get(user)
         if not username:
             userinfo = self.client.users_info(user=user)
-            username = userinfo['user']['name']
+            username = userinfo['user']['profile']['display_name']
             self._username_cache[user] = username
         return username
 
