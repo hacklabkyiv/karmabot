@@ -1,3 +1,4 @@
+
 **karmabot** is a Slack bot that listens for and performs karma operations.
 
 *The main difference from other bots is that this one is community oriented.
@@ -23,8 +24,8 @@ Install `docker` and then:
 ```sh
 $ git clone https://github.com/dethoter/karmabot && cd karmabot
 $ cp config.yml.template config.yml
-# docker build -t karmabot .
-# docker run -d --name karmabot --restart=unless-stopped --network=host -it karmabot
+$ docker build -t karmabot .
+$ docker run -d --name karmabot --restart=unless-stopped --network=host -it karmabot
 ```
 
 This `Dockerfile` from repo contains setup for RaspberryPi.
@@ -33,9 +34,35 @@ You can modify **FROM** field in order to target your distro.
 ### 💻 Locally
 
 ```sh
+$ git clone https://github.com/dethoter/karmabot && cd karmabot
+$ # config
 $ cp config.yml.template config.yml
-$ pipenv install
-$ python3 ./app.py
+$ # poetry
+$ poetry config virtualenvs.create true
+$ poetry config virtualenvs.in-project true
+$ poetry install
+$ # lang
+$ poetry run pybabel compile -d /app/lang/
+$ # run
+$ poetry run python ./app.py
+```
+
+### 📝 systemd
+
+```sh
+$ git clone https://github.com/dethoter/karmabot .karmabot
+$ # config
+$ cp .karmabot/config.yml.template .karmabot/config.yml
+$ # poetry
+$ poetry config virtualenvs.create true
+$ poetry config virtualenvs.in-project true
+$ poetry install
+$ # lang
+$ poetry run pybabel compile -d /app/lang/
+$ # systemd
+$ sudo cp .karmabot/systemd/karmabot.service /etc/systemd/system
+$ sudo systemctl start karmabot.service
+$ sudo systemctl enable karmabot.service
 ```
 
 
