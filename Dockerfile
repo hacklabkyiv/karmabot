@@ -1,14 +1,12 @@
 FROM python:3.8-slim-buster
-RUN apt update -y
-RUN apt-get install -y build-essential libssl-dev libffi-dev python3-dev --no-install-recommends
 
 RUN pip install -U pip
-RUN pip install poetry
+RUN pip install poetry==1.0.5
 
 WORKDIR /app
 COPY pyproject.toml poetry.lock /app/
 
-RUN poetry config settings.virtualenvs.create false
+RUN poetry config virtualenvs.create false
 RUN poetry install --no-dev --no-interaction --no-ansi
 
 COPY lang/ /app/lang/

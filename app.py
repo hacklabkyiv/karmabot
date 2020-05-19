@@ -1,5 +1,6 @@
 import yaml
 import logging
+import logging.config
 from pprint import pformat
 
 from karmabot.karmabot import Karmabot
@@ -13,7 +14,7 @@ def get_backup_provider(config):
     return None
 
 
-if __name__ == '__main__':
+def main():
     config = yaml.safe_load(open('config.yml', 'r'))
     logging_config = yaml.safe_load(open('logging.yml', 'r'))
     logging_config['root']['level'] = config['log_level']
@@ -24,3 +25,7 @@ if __name__ == '__main__':
     b = get_backup_provider(config)
     bot = Karmabot(config, backup_provider=b)
     bot.listen()
+
+
+if __name__ == '__main__':
+    main()
