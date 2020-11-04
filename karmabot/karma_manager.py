@@ -8,13 +8,7 @@ from .words import Color
 
 # FIXME: check every where for succeded POST
 class KarmaManager:
-    __slots__ = [
-        '_initial_value', '_max_shot', '_self_karma', '_vote_timeout',
-        '_upvote_emoji', '_downvote_emoji', '_keep_history',
-        '_transport', '_format', '_backup', '_session', '_logger'
-    ]
-
-    def __init__(self, karma_config, db_config, transport, fmt, backup_provider):
+    def __init__(self, karma_config, db_config, transport, fmt):
         self._initial_value = karma_config['initial_value']
         self._max_shot = karma_config['max_shot']
         self._self_karma = karma_config['self_karma']
@@ -25,7 +19,6 @@ class KarmaManager:
 
         self._transport = transport
         self._format = fmt
-        self._backup = backup_provider
         self._session = get_scoped_session(db_config)
         self._logger = logging.getLogger('KarmaManager')
 
@@ -160,7 +153,6 @@ class KarmaManager:
             self._close(e, success)
 
         self._session.commit()
-        self._backup()
         return result
 
     def remove_old_votings(self):

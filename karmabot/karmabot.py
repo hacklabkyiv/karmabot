@@ -33,7 +33,7 @@ def _configure_auto_digest(cfg, transport, manager):
 class Karmabot:
     REQUIRED_MESSAGE_FIELDS = ('user', 'text', 'ts', 'type', 'channel')
 
-    def __init__(self, cfg, backup_provider):
+    def __init__(self, cfg):
         self._config = cfg
 
         bot_config = self._config['bot']
@@ -50,8 +50,7 @@ class Karmabot:
         self._manager = KarmaManager(karma_config=karma_config,
                                      db_config=db_config,
                                      transport=self._transport,
-                                     fmt=self._format,
-                                     backup_provider=backup_provider)
+                                     fmt=self._format)
 
         self._auto_digest = _configure_auto_digest(cfg.get('auto_post'),
                                                    self._transport,
