@@ -14,7 +14,6 @@ def main():
 
     logging.debug('Config: {}'.format(pformat(config)))
 
-    b = get_backup_provider(config)
     bot = Karmabot(config)
     bot.listen()
 

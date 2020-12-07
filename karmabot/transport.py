@@ -1,7 +1,6 @@
 import logging
 from collections import Counter
 from slack import WebClient
-import time
 
 
 class Transport:

@@ -1,10 +1,9 @@
 from datetime import datetime
 from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy import cast
 
 
 ORM_BASE = declarative_base()
@@ -37,7 +36,7 @@ def get_scoped_session(db_config):
 
 
 class Karma(ORM_BASE):
-    __tablename__ = 'karma'
+    __tablename__ = 'karmabot_karma'
 
     id = Column(Integer, primary_key=True)
     user_id = Column(String(256), unique=True, nullable=False)
@@ -48,7 +47,7 @@ class Karma(ORM_BASE):
 
 
 class Voting(ORM_BASE):
-    __tablename__ = 'karma_voting'
+    __tablename__ = 'karmabot_voting'
 
     id = Column(Integer, primary_key=True)
     created = Column(DateTime, nullable=False, default=datetime.now())
