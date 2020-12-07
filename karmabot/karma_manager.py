@@ -59,7 +59,6 @@ class KarmaManager:
         if len(result) == 1:
             result = 'Seems like nothing to show. All the karma is zero'
         else:
-            result.append('The rest are full ZERO')
             result = '\n'.join(result)
 
         self._transport.post(self._digest_channel, self._format.message(Color.INFO, result))
