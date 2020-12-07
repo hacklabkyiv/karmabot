@@ -1,11 +1,13 @@
 import logging
 import time
 from collections import namedtuple
+from apscheduler.executors.pool import ProcessPoolExecutor
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.schedulers.background import BackgroundScheduler
 from slack import RTMClient
 
 from karmabot.parse import Parse
 from karmabot.words import Format, Color
-from karmabot.auto_digest import AutoDigest
 from karmabot.karma_manager import KarmaManager
 from karmabot.transport import Transport
 
@@ -13,21 +15,31 @@ from karmabot.transport import Transport
 Command = namedtuple('Command', 'name parser executor admin_only')
 
 
-def _configure_auto_digest(cfg, transport, manager):
+def _get_auto_digest_config(cfg, transport):
     if not all(k in cfg for k in ('channel', 'day')):
         logging.error('Failed to configure auto digest')
         return None
 
+    channel = cfg['channel']
     result = transport.client.api_call('channels.list', exclude_archived=True,
                                        exclude_members=True)
-    channel = cfg['channel']
     for c in result.get('channels', []):
         if c['name'] == channel:
-            auto_digest = AutoDigest(cfg['day'], c['id'], manager.digest)
-            logging.debug('Auto digest for channel=%s configured successfully',
-                          channel)
-            return auto_digest
-    return None
+            return {'channel': c['id'], 'day': cfg['day']}
+    return {}
+
+
+def _make_scheduler():
+    jobstores = {'default': SQLAlchemyJobStore(tablename='karmabot_scheduler')}
+    executors = {'default': ProcessPoolExecutor()}
+    job_defaults = {
+        'coalesce': True,  # run only once if turns out we need to run > 1 time
+        'max_instances': 1  # max number of job of one type running simultaneously
+    }
+    scheduler = BackgroundScheduler(jobstores=jobstores,
+                                    executors=executors,
+                                    job_defaults=job_defaults)
+    return scheduler
 
 
 class Karmabot:
@@ -47,15 +59,23 @@ class Karmabot:
                               karma_config['upvote_emoji'],
                               karma_config['downvote_emoji'],
                               karma_config['vote_timeout'])
+
+        digest_cfg = _get_auto_digest_config(cfg.get('auto_post'))
         self._manager = KarmaManager(karma_config=karma_config,
+                                     digest_channel=digest_cfg.get('channel'),
                                      db_config=db_config,
                                      transport=self._transport,
                                      fmt=self._format)
 
-        self._auto_digest = _configure_auto_digest(cfg.get('auto_post'),
-                                                   self._transport,
-                                                   self._manager)
-        self._auto_digest_cmd = getattr(self._auto_digest, 'digest', lambda: None)
+        if digest_cfg:
+            self._auto_digest = _make_scheduler()
+            self._auto_digest.add_job(
+                self._manager.digest,
+                id='auto_digest',
+                trigger='cron',
+                minute=digest_cfg.get('day')
+            )
+            self._auto_digest.start()
 
         self._logger = logging.getLogger('Karmabot')
 
@@ -80,7 +100,6 @@ class Karmabot:
             now = time.time()
             self._manager.close_expired_votings(now)
             self._manager.remove_old_votings()
-            self._auto_digest_cmd()
 
             if not self._transport.events:
                 time.sleep(0.1)

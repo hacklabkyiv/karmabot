@@ -1,5 +1,4 @@
 import logging
-import time
 from datetime import datetime, timedelta
 from .orm import get_scoped_session, Voting, Karma, cast, Float
 from .parse import Parse
@@ -8,7 +7,7 @@ from .words import Color
 
 # FIXME: check every where for succeded POST
 class KarmaManager:
-    def __init__(self, karma_config, db_config, transport, fmt):
+    def __init__(self, karma_config, db_config, transport, fmt, digest_channel=None):
         self._initial_value = karma_config['initial_value']
         self._max_shot = karma_config['max_shot']
         self._self_karma = karma_config['self_karma']
@@ -16,6 +15,8 @@ class KarmaManager:
         self._upvote_emoji = karma_config['upvote_emoji']
         self._downvote_emoji = karma_config['downvote_emoji']
         self._keep_history = timedelta(seconds=karma_config['keep_history'])
+
+        self._digest_channel = digest_channel
 
         self._transport = transport
         self._format = fmt
@@ -48,7 +49,7 @@ class KarmaManager:
         self._transport.post(channel, self._format.report_karma(username, karma))
         return True
 
-    def digest(self, channel):
+    def digest(self):
         result = ['*username* => *karma*']
         for r in self._session.query(Karma).filter(Karma.karma != 0).order_by(Karma.karma.desc()).all():
             item = '_{}_ => *{}*'.format(self._transport.lookup_username(r.user_id), r.karma)
@@ -61,7 +62,7 @@ class KarmaManager:
             result.append('The rest are full ZERO')
             result = '\n'.join(result)
 
-        self._transport.post(channel, self._format.message(Color.INFO, result))
+        self._transport.post(self._digest_channel, self._format.message(Color.INFO, result))
         return True
 
     def pending(self, channel):
