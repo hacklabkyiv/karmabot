@@ -3,7 +3,7 @@
 log_level: debug
 
 bot:
-  lang: ru
+  lang: uk
   slack_token: <SLACK_BOT_TOKEN>
   admins: dethoter,ollie
 

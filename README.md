@@ -76,14 +76,6 @@ $ sudo systemctl enable karmabot.service
 
 Set a channel in `auto_post.channel` and a day of a month in `auto_post.day` and get a monthly digest.
 
-### 🗄 Backup
-
-DB backups after each closed voting if a backup provider is configured.
-In order to configure it user shoud pass provider's token to `backup.dropbox` env variable.
-
-_Providers:_
-  - ✅ **Dropbox**
-  - 🔜 **GDrive**
 
 ### 📋 Configuration
 
@@ -122,6 +114,20 @@ All the commands should be sent into direct messages to **karmabot**.
 | config    |                                 | show config for this execution          |
 | help      |                                 | show this message                       |
 
+
+## Translation
+
+Multi-language support in this project depends on `gettext` and `pybabel`.
+
+```sh
+sudo apt-get install gettext
+```
+
+In order to add support for a new language one runs
+
+```
+msginit --no-translator -i lang/karmabot.pot -l uk_UA.UTF-8
+```
 
 ## License
 
