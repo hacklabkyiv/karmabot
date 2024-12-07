@@ -4,7 +4,7 @@ from collections import namedtuple
 from apscheduler.executors.pool import ProcessPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
-from slack import RTMClient
+from slack_sdk.rtm_v2 import RTMClient
 
 from karmabot.parse import Parse
 from karmabot.words import Format, Color
@@ -93,6 +93,8 @@ class Karmabot:
         ]
 
         self._slack_reader = RTMClient(token=bot_config['slack_token'])
+        self._slack_reader.on('team_join')(self._handle_team_join)
+        self._slack_reader.on('message')(self._handle_message)
         self._slack_reader.start()
 
     def listen(self):
@@ -133,9 +135,7 @@ class Karmabot:
         self._transport.post(channel, self._format.cmd_error())
         return False
 
-    @RTMClient.run_on(event='team_join')
-    def _handle_team_join(self, **payload):
-        event = payload['data']
+    def _handle_team_join(self, client: RTMClient, event: dict):
         self._logger.debug('Processing event: %s', event)
         user_id = event['user']['id']
         new_dm = self._transport.client.api_call('im.open', user=user_id)
@@ -144,9 +144,7 @@ class Karmabot:
         self._logger.info('Team joined by user_id=%s', user_id)
         return True
 
-    @RTMClient.run_on(event='message')
-    def _handle_message(self, **payload):
-        event = payload['data']
+    def _handle_message(self, client: RTMClient, event: dict):
         self._logger.debug('Processing event: %s', event)
 
         if not all(r in event for r in self.REQUIRED_MESSAGE_FIELDS):
