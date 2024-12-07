@@ -18,9 +18,36 @@ sqlalchemy = "^2.0.0"
 pytest = "^7.0"
 ruff = "^0.8.0"
 
+[tool.ruff]
+target-version = "py312"
+respect-gitignore = true
+force-exclude = true  # exclude ignored files if they passed via CLI
+fix = true
+line-length = 99
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    "B", # flake8-bugbear
+    "D", # pydocstyle
+    "F", # pyflakes
+    "G", # flake8-logging-format
+    "T10", # flake8-debugger
+    "UP", # pyupgrade
+    "YTT", # flake-2020
+]
+
+[tool.ruff.lint.pet-file-ignores]
+"tests/**/*.py" = [
+    "B011", # do not flag asserts
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
 [build-system]
 requires = ["poetry>=1.0.0"]
-build-backend = "poetry.masonry.api"
+build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-run = "app:main"
+karmabot = "app:main"
