@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "Slack bot that listens for and performs karma operations"
 readme = "README.md"
 license = "LICENSE"
-authors = ["Evgen Druzhynin <evgen.druzhynin@gmail.com>"]
+authors = ["Eugene <1511447+fa7ca7@users.noreply.github.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
