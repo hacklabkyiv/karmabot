@@ -1,20 +1,20 @@
 # See README for how to configure these params
 
 log_level: info
+lang: uk
+slack_token: <SLACK_BOT_TOKEN>
+admins:
+  - bot_admin_slack_name_1
+  - bot_admin_slack_name_2
 
-bot:
-  lang: uk
-  slack_token: <SLACK_BOT_TOKEN>
-  admins: bor_admin_slack_name_1,bot_admin_slack_name_2
-
-auto_post:
+digest:
   channel: general
   day: 1
 
 karma:
   initial_value: 0
-  max_shot: 5
-  self_karma: Yes
+  max_diff: 5
+  self_karma: yes
   vote_timeout: 10800.0 # 3 hours
   keep_history: 7884000.0 # 3 months
   upvote_emoji:

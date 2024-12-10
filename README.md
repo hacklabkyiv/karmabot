@@ -10,7 +10,7 @@ This means that no karma will be applied unless community react using emoji.*
   - `@karmabot @username ++ for blah blah`
   - `@karmabot @username -- for blah blah`
 
-  Number of `+` or `-` is limited to `MAX_SHOT` points (see the **Usage** section below).
+  Number of `+` or `-` is limited to `karma.max_diff` points (see the **Usage** section below).
   Upvote/downvote a user by adding reactjis to their message.
 
 - Get/set a karma of specific user by posting a direct message to karmabot.
@@ -74,7 +74,7 @@ $ sudo systemctl enable karmabot.service
 
 ### 📆 Autoposting
 
-Set a channel in `auto_post.channel` and a day of a month in `auto_post.day` and get a monthly digest.
+Set a channel in `digest.channel` and a day of a month in `digest.day` and get a monthly digest.
 
 
 ### 📋 Configuration
@@ -82,17 +82,17 @@ Set a channel in `auto_post.channel` and a day of a month in `auto_post.day` and
 | option                      | required? | description                              | default                          |
 | --------------------------- | --------- | ---------------------------------------- | -------------------------------- |
 | `log_level`                 | no        | set log level                            | `INFO`                           |
-| `bot.lang`                  | no        | options: en, ru                          | en                               |
-| `bot.slack_token`           | **yes**   | slack RTM token                          |                                  |
-| `bot.admins`                | no        | admins who can set karma to users        |                                  |
+| `lang`                  | no        | options: en, uk                          | en                               |
+| `slack_token`           | **yes**   | slack RTM token                          |                                  |
+| `admins`                | no        | admins who can set karma to users        |                                  |
 | `karma.initial_value`       | no        | the default amount of user karma         | `0`                              |
-| `karma.max_shot`            | no        | the maximum amount of points that users can give/take at once | `5`         |
+| `karma.max_diff`            | no        | the maximum amount of points that users can give/take at once | `5`         |
 | `karma.vote_timeout`        | no        | a time to wait until a voting closes     | `true`                           |
 | `karma.upvote_emoji`        | no        | reactjis to use for upvotes.             | `+1`, `thumbsup`, `thumbsup_all` |
 | `karma.downvote_emoji`      | no        | reactjis to use for downvotes.           | `-1`, `thumbsdown`               |
 | `karma.self_karma`          | no        | allow users to add/remove karma to themselves | `false`                     |
-| `auto_post.channel`         | no        | channel to post digest to                |                                  |
-| `auto_post.day`             | no        | a day when auto digest will be posted    | `1`                              |
+| `digest.channel`         | no        | channel to post digest to                |                                  |
+| `digest.day`             | no        | a day when auto digest will be posted    | `1`                              |
 | `db.type`                   | no        | type of database (may be any DB that sqlalchemy supports) | `postgresql`    |
 | `db.user`                   | no        | user of database                         |                                  |
 | `db.password`               | no        | password for database                    |                                  |

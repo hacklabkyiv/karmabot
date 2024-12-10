@@ -9,7 +9,7 @@ from .words import Color
 class KarmaManager:
     def __init__(self, karma_config, db_config, transport, fmt, digest_channel=None):
         self._initial_value = karma_config['initial_value']
-        self._max_shot = karma_config['max_shot']
+        self._max_diff = karma_config['max_diff']
         self._self_karma = karma_config['self_karma']
         self._vote_timeout = karma_config['vote_timeout']
         self._upvote_emoji = karma_config['upvote_emoji']
@@ -188,6 +188,6 @@ class KarmaManager:
             return self._format.strange_error()
         if user_id == bot_id:
             return self._format.robo_error()
-        if abs(karma) > self._max_shot:
-            return self._format.max_shot_error(self._max_shot)
+        if abs(karma) > self._max_diff:
+            return self._format.max_diff_error(self._max_diff)
         return None

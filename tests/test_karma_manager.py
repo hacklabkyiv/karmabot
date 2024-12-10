@@ -22,7 +22,7 @@ CONFIG = {
         'downvote_emoji': ['-1'],
         'vote_timeout': 0.1,
         'self_karma': False,
-        'max_shot': 10,
+        'max_diff': 10,
         'keep_history': 100000,
     }
 }

@@ -68,7 +68,7 @@ msgstr ""
 "Запит на зміну карми має бути типу `@karmabot @username +++ бла бла`"
 
 #: words.py:43
-msgid "max_shot_error"
+msgid "max_diff_error"
 msgstr "Максимальне пошкодження {} карми"
 
 #: words.py:45

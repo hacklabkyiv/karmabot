@@ -4,7 +4,6 @@ from slack_sdk import WebClient
 
 
 class Transport:
-    __slots__ = ['client', '_username_cache', '_channel_name_cache', '_logger']
 
     def __init__(self, token):
         self.client = WebClient(token=token)

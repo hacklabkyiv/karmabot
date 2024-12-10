@@ -77,8 +77,8 @@ class Format:
     def parsing_error(self):
         return Format.message(Color.ERROR, _('parsing_error').format(':robot_face:'))
 
-    def max_shot_error(self, max_shot):
-        return Format.message(Color.ERROR, _('max_shot_error').format(max_shot))
+    def max_diff_error(self, max_diff):
+        return Format.message(Color.ERROR, _('max_diff_error').format(max_diff))
 
     def strange_error(self):
         return Format.message(Color.ERROR, _('strange_error').format(':grimacing:'))

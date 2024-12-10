@@ -48,19 +48,18 @@ class Karmabot:
     def __init__(self, cfg):
         self._config = cfg
 
-        bot_config = self._config['bot']
         karma_config = self._config['karma']
         db_config = self._config['db']
 
-        self._admins = bot_config['admins']
+        self._admins = self._config['admins']
 
-        self._transport = Transport(bot_config['slack_token'])
-        self._format = Format(bot_config['lang'],
+        self._transport = Transport(self._config['slack_token'])
+        self._format = Format(self._config['lang'],
                               karma_config['upvote_emoji'],
                               karma_config['downvote_emoji'],
                               karma_config['vote_timeout'])
 
-        digest_cfg = _get_auto_digest_config(cfg.get('auto_post'))
+        digest_cfg = _get_auto_digest_config(cfg.get('digest'))
         self._manager = KarmaManager(karma_config=karma_config,
                                      digest_channel=digest_cfg.get('channel'),
                                      db_config=db_config,
@@ -92,7 +91,7 @@ class Karmabot:
                     executor=self._cmd_help, admin_only=False),
         ]
 
-        self._slack_reader = RTMClient(token=bot_config['slack_token'])
+        self._slack_reader = RTMClient(token=self._config['slack_token'])
         self._slack_reader.on('team_join')(self._handle_team_join)
         self._slack_reader.on('message')(self._handle_message)
         self._slack_reader.start()
