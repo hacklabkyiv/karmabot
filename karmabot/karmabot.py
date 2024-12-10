@@ -1,6 +1,7 @@
 import logging
 import time
-from collections import namedtuple
+from dataclasses import dataclass
+from typing import Any
 from apscheduler.executors.pool import ProcessPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -12,7 +13,14 @@ from karmabot.karma_manager import KarmaManager
 from karmabot.transport import Transport
 
 
-Command = namedtuple('Command', 'name parser executor admin_only')
+REQUIRED_MESSAGE_FIELDS = {'user', 'text', 'ts', 'type', 'channel'}
+
+@dataclass
+class Command:
+    name: str
+    parser: Any
+    executor: Any
+    admin_only: bool
 
 
 def _get_auto_digest_config(cfg, transport):
@@ -43,7 +51,6 @@ def _make_scheduler():
 
 
 class Karmabot:
-    REQUIRED_MESSAGE_FIELDS = ('user', 'text', 'ts', 'type', 'channel')
 
     def __init__(self, cfg):
         self._config = cfg
@@ -91,19 +98,15 @@ class Karmabot:
                     executor=self._cmd_help, admin_only=False),
         ]
 
-        self._slack_reader = RTMClient(token=self._config['slack_token'])
-        self._slack_reader.on('team_join')(self._handle_team_join)
-        self._slack_reader.on('message')(self._handle_message)
-        self._slack_reader.start()
+        self._transport.register_callback('team_join', self._handle_team_join)
+        self._transport.register_callback('message', self._handle_message)
 
     def listen(self):
+        self._transport.start()
         while True:
             now = time.time()
             self._manager.close_expired_votings(now)
             self._manager.remove_old_votings()
-
-            if not self._transport.events:
-                time.sleep(0.1)
 
     def _handle_dm_cmd(self, initiator_id, channel, text):
         # Handling only DM messages and skipping own messages
@@ -146,7 +149,8 @@ class Karmabot:
     def _handle_message(self, client: RTMClient, event: dict):
         self._logger.debug('Processing event: %s', event)
 
-        if not all(r in event for r in self.REQUIRED_MESSAGE_FIELDS):
+        event_fields = set(event.keys())
+        if not REQUIRED_MESSAGE_FIELDS.issubset(event_fields):
             self._logger.debug('Not enough fields for: %s', event)
             return False
 

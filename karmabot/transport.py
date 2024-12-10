@@ -1,16 +1,23 @@
 import logging
 from collections import Counter
 from slack_sdk import WebClient
+from slack_sdk.rtm_v2 import RTMClient
 
 
 class Transport:
 
     def __init__(self, token):
         self.client = WebClient(token=token)
-
+        self._slack_reader = RTMClient(token=token)
         self._username_cache = {}
         self._channel_name_cache = {}
         self._logger = logging.getLogger('Transport')
+
+    def register_callback(self, action, callback_fn):
+        self._slack_reader.on(action)(callback_fn)
+
+    def start(self):
+        self._slack_reader.start()
 
     def lookup_username(self, user_id):
         user = user_id.strip('<>@')
