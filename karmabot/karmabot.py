@@ -69,7 +69,7 @@ class Karmabot:
             karma_config["vote_timeout"],
         )
 
-        digest_cfg = _get_auto_digest_config(cfg.get("digest"))
+        digest_cfg = _get_auto_digest_config(cfg.get("digest"), transport=self._transport)
         self._manager = KarmaManager(
             karma_config=karma_config,
             digest_channel=digest_cfg.get("channel"),
@@ -147,7 +147,7 @@ class Karmabot:
     def _handle_team_join(self, client: RTMClient, event: dict):
         logger.debug("Processing event: %s", event)
         user_id = event["user"]["id"]
-        new_dm = self._transport.client.api_call("im.open", user=user_id)
+        new_dm = self._transport.client.api_call("im.open", params=dict(user=user_id))
         self._transport.post(new_dm["channel"]["id"], self._format.hello())
 
         logger.info("Team joined by user_id=%s", user_id)

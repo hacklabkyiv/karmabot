@@ -8,4 +8,7 @@ lint:
 	ruff check .
 	ruff format .
 
-all: install lint test
+types:
+	mypy .
+
+all: install lint types test

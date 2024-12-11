@@ -1,11 +1,12 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-ORM_BASE = declarative_base()
+
+class OrmBase(DeclarativeBase):
+    pass
 
 
 def make_db_uri(cfg):
@@ -24,17 +25,15 @@ def make_db_uri(cfg):
     return f"db_type://{auth}{host}:{port}/{db_name}"
 
 
-def get_scoped_session(db_config):
+def create_session_maker(db_config):
     db_uri = make_db_uri(db_config)
     engine = create_engine(db_uri)
-    ORM_BASE.metadata.create_all(engine)
-    ORM_BASE.metadata.bind = engine
-    session_factory = sessionmaker(bind=engine)
-    Session = scoped_session(session_factory)
-    return Session()
+    OrmBase.metadata.create_all(engine, checkfirst=True)
+    Session = sessionmaker(bind=engine)
+    return Session
 
 
-class Karma(ORM_BASE):
+class Karma(OrmBase):
     __tablename__ = "karmabot_karma"
 
     id = Column(Integer, primary_key=True)
@@ -45,7 +44,7 @@ class Karma(ORM_BASE):
         return f"<Karma(user_id={self.user_id}, karma={self.karma})>"
 
 
-class Voting(ORM_BASE):
+class Voting(OrmBase):
     __tablename__ = "karmabot_voting"
 
     id = Column(Integer, primary_key=True)

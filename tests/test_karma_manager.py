@@ -5,12 +5,12 @@ from unittest.mock import ANY, MagicMock, call, patch
 import pytest
 
 from karmabot.karma_manager import KarmaManager
-from karmabot.orm import Karma, Voting, get_scoped_session
+from karmabot.orm import Karma, Voting, create_session_maker
 from karmabot.words import Color
 
 from .common import SAMPLE_KARMA, TEST_CHANNEL, TEST_KARMA, TEST_MSG, TEST_USER, TEST_USERNAME
 
-CONFIG = {
+CONFIG: dict = {
     "db": {
         "type": "sqlite",
         "name": ":memory:",
@@ -28,12 +28,13 @@ CONFIG = {
 
 
 @pytest.fixture
-def new_session():
-    s = get_scoped_session(CONFIG["db"])
-    for u, k in SAMPLE_KARMA.items():
-        s.add(Karma(user_id=u, karma=k))
-    s.commit()
-    return s
+def new_session_maker():
+    session_class = create_session_maker(CONFIG["db"])
+    with session_class() as s:
+        for u, k in SAMPLE_KARMA.items():
+            s.add(Karma(user_id=u, karma=k))
+        s.commit()
+    return session_class
 
 
 @pytest.fixture
@@ -52,9 +53,9 @@ def fmt():
 
 
 @pytest.fixture
-def km(transport, fmt, new_session):
+def km(transport, fmt, new_session_maker):
     km = KarmaManager(CONFIG["karma"], CONFIG["db"], transport, fmt, MagicMock())
-    km._session = new_session
+    km._session_maker = new_session_maker
     return km
 
 
@@ -122,10 +123,10 @@ def test_pending_print(km):
     km._transport.lookup_channel_name.return_value = "general"
     km.pending(TEST_CHANNEL)
 
-    expired = datetime.fromtimestamp(float(message_ts)) + timedelta(
+    expired_dt = datetime.fromtimestamp(float(message_ts)) + timedelta(
         seconds=CONFIG["karma"]["vote_timeout"]
     )
-    expired = expired.isoformat()
+    expired = expired_dt.isoformat()
 
     expect = "\n".join(
         (
