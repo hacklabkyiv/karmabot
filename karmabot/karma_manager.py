@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 from .orm import get_scoped_session, Voting, Karma, cast, Float
 from .parse import Parse
 from .words import Color
+from .logging import logger
 
 
-# FIXME: check every where for succeded POST
 class KarmaManager:
     def __init__(self, karma_config, db_config, transport, fmt, digest_channel=None):
         self._initial_value = karma_config['initial_value']
@@ -21,7 +21,6 @@ class KarmaManager:
         self._transport = transport
         self._format = fmt
         self._session = get_scoped_session(db_config)
-        self._logger = logging.getLogger('KarmaManager')
 
     def get(self, user_id, channel):
         karma = self._session.query(Karma).filter_by(user_id=user_id).first()
@@ -89,8 +88,8 @@ class KarmaManager:
         # Check for an already existing voting
         instance = self._session.query(Voting).filter_by(uuid=(ts, channel)).first()
         if instance:
-            self._logger.fatal('Voting already exists: ts=%s, channel=%s',
-                               ts, channel)
+            logger.fatal('Voting already exists: ts=%s, channel=%s',
+                         ts, channel)
             return False
 
         # Report an error if a request has not been parsed
@@ -131,13 +130,13 @@ class KarmaManager:
             cast(Voting.bot_message_ts, Float) + self._vote_timeout < now)
 
         for e in expired.all():
-            self._logger.debug('Expired voting: %s', e)
+            logger.debug('Expired voting: %s', e)
 
             reactions = self._transport.reactions_get(e.channel, e.message_ts,
                                                       e.bot_message_ts)
             if reactions is None:
                 result = False
-                self._logger.error('Failed to get messages for: %s', e)
+                logger.error('Failed to get messages for: %s', e)
                 self._session.delete(e)
                 continue
 
@@ -172,11 +171,10 @@ class KarmaManager:
                                       karma_change.bot_message_ts)
 
     def _determine_success(self, reactions):
-        self._logger.debug('Reactions: %s', reactions)
+        logger.debug('Reactions: %s', reactions)
         upvotes = [reactions[r] for r in self._upvote_emoji if r in reactions]
         downvotes = [reactions[r] for r in self._downvote_emoji if r in reactions]
-        self._logger.debug('Upvotes: %s', upvotes)
-        self._logger.debug('Downvotes: %s', downvotes)
+        logger.debug('Upvotes: %s\nDownvotes: %s', upvotes, downvotes)
         return sum(upvotes) - sum(downvotes) > 0
 
     def _karma_change_sanity_check(self,

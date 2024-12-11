@@ -1,4 +1,3 @@
-import logging
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -11,6 +10,7 @@ from karmabot.parse import Parse
 from karmabot.words import Format, Color
 from karmabot.karma_manager import KarmaManager
 from karmabot.transport import Transport
+from .logging import logger
 
 
 REQUIRED_MESSAGE_FIELDS = {'user', 'text', 'ts', 'type', 'channel'}
@@ -25,7 +25,7 @@ class Command:
 
 def _get_auto_digest_config(cfg, transport):
     if not all(k in cfg for k in ('channel', 'day')):
-        logging.error('Failed to configure auto digest')
+        logger.error('Failed to configure auto digest')
         return None
 
     channel = cfg['channel']
@@ -83,8 +83,6 @@ class Karmabot:
             )
             self._auto_digest.start()
 
-        self._logger = logging.getLogger('Karmabot')
-
         self._commands = [
             Command(name='get', parser=Parse.cmd_get,
                     executor=self._manager.get, admin_only=False),
@@ -129,29 +127,29 @@ class Karmabot:
                 return True
 
             if cmd.executor(*args, channel=channel):
-                self._logger.debug('Executed %s command', cmd.name)
+                logger.debug('Executed %s command', cmd.name)
             else:
-                self._logger.error('Failed to execute %s commnad', cmd.name)
+                logger.error('Failed to execute %s commnad', cmd.name)
             return True
 
         self._transport.post(channel, self._format.cmd_error())
         return False
 
     def _handle_team_join(self, client: RTMClient, event: dict):
-        self._logger.debug('Processing event: %s', event)
+        logger.debug('Processing event: %s', event)
         user_id = event['user']['id']
         new_dm = self._transport.client.api_call('im.open', user=user_id)
         self._transport.post(new_dm['channel']['id'], self._format.hello())
 
-        self._logger.info('Team joined by user_id=%s', user_id)
+        logger.info('Team joined by user_id=%s', user_id)
         return True
 
     def _handle_message(self, client: RTMClient, event: dict):
-        self._logger.debug('Processing event: %s', event)
+        logger.debug('Processing event: %s', event)
 
         event_fields = set(event.keys())
         if not REQUIRED_MESSAGE_FIELDS.issubset(event_fields):
-            self._logger.debug('Not enough fields for: %s', event)
+            logger.debug('Not enough fields for: %s', event)
             return False
 
         initiator_id = event['user']
@@ -164,13 +162,13 @@ class Karmabot:
 
         # Don't handle requests from private channels (aka groups)
         if channel.startswith('G'):
-            self._logger.debug('Skip message in group %s', channel)
+            logger.debug('Skip message in group %s', channel)
             return False
 
         # Handle only messages with `@karmabot` at the beginning
         user_id = Parse.user_mention(text)
         if not user_id or not self._is_me(user_id):
-            self._logger.debug('Skip message not for bot: %s', text)
+            logger.debug('Skip message not for bot: %s', text)
             return False
         return self._manager.create(initiator_id, channel, text, ts)
 

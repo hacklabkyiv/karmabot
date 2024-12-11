@@ -1,7 +1,7 @@
-import logging
 from collections import Counter
 from slack_sdk import WebClient
 from slack_sdk.rtm_v2 import RTMClient
+from .logging import logger
 
 
 class Transport:
@@ -11,7 +11,6 @@ class Transport:
         self._slack_reader = RTMClient(token=token)
         self._username_cache = {}
         self._channel_name_cache = {}
-        self._logger = logging.getLogger('Transport')
 
     def register_callback(self, action, callback_fn):
         self._slack_reader.on(action)(callback_fn)
@@ -41,7 +40,7 @@ class Transport:
         r = Counter()
         for ts in (initial_msg_ts, bot_msg_ts):
             result = self.client.reactions_get(channel=channel, timestamp=ts)
-            self._logger.debug(f'Getting reactions: {result}')
+            logger.debug(f'Getting reactions: {result}')
 
             if 'message' not in result:
                 return None
@@ -51,11 +50,11 @@ class Transport:
         return r
 
     def post(self, channel, msg, ts=''):
-        self._logger.debug(f'Sending message to {channel}: {msg}')
+        logger.debug(f'Sending message to {channel}: {msg}')
         return self.client.chat_postMessage(channel=channel, link_names=True,
                                             as_user=True, thread_ts=ts, **msg)
 
     def update(self, channel, msg, ts):
-        self._logger.debug(f'Sending update to {channel}: {msg}')
+        logger.debug(f'Sending update to {channel}: {msg}')
         return self.client.chat_update(channel=channel, link_names=True,
                                        as_user=True, ts=ts, **msg)
