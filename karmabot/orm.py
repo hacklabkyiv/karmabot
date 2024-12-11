@@ -1,28 +1,27 @@
 from datetime import datetime
-from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean
-from sqlalchemy.orm import sessionmaker, scoped_session
+
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
-
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 ORM_BASE = declarative_base()
 
 
 def make_db_uri(cfg):
-    db_type = cfg['type']
-    if db_type == 'sqlite':
-        return 'sqlite:///' + cfg['name']
+    db_type = cfg["type"]
+    if db_type == "sqlite":
+        return "sqlite:///" + cfg["name"]
 
-    user = cfg.get('user', '')
-    password = cfg.get('password', '') if user else ''
-    auth = f'{user}:{password}@' if user and password else ''
+    user = cfg.get("user", "")
+    password = cfg.get("password", "") if user else ""
+    auth = f"{user}:{password}@" if user and password else ""
 
-    host = cfg.get('host', '127.0.0.1')
-    port = cfg.get('port', '5432')
+    host = cfg.get("host", "127.0.0.1")
+    port = cfg.get("port", "5432")
 
-    db_name = cfg['name']
-    return f'db_type://{auth}{host}:{port}/{db_name}'
+    db_name = cfg["name"]
+    return f"db_type://{auth}{host}:{port}/{db_name}"
 
 
 def get_scoped_session(db_config):
@@ -36,18 +35,18 @@ def get_scoped_session(db_config):
 
 
 class Karma(ORM_BASE):
-    __tablename__ = 'karmabot_karma'
+    __tablename__ = "karmabot_karma"
 
     id = Column(Integer, primary_key=True)
     user_id = Column(String(256), unique=True, nullable=False)
     karma = Column(Integer, nullable=False)
 
     def __repr__(self):
-        return f'<Karma(user_id={self.user_id}, karma={self.karma})>'
+        return f"<Karma(user_id={self.user_id}, karma={self.karma})>"
 
 
 class Voting(ORM_BASE):
-    __tablename__ = 'karmabot_voting'
+    __tablename__ = "karmabot_voting"
 
     id = Column(Integer, primary_key=True)
     created = Column(DateTime, nullable=False, default=datetime.now())

@@ -29,15 +29,15 @@ indent-width = 4
 [tool.ruff.lint]
 select = [
     "B", # flake8-bugbear
-    "D", # pydocstyle
     "F", # pyflakes
     "G", # flake8-logging-format
+    "I", # isort
     "T10", # flake8-debugger
     "UP", # pyupgrade
     "YTT", # flake-2020
 ]
 
-[tool.ruff.lint.pet-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "B011", # do not flag asserts
 ]
