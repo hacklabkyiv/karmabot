@@ -7,7 +7,7 @@ license = "LICENSE"
 authors = ["Eugene <1511447+fa7ca7@users.noreply.github.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 apscheduler = "^3.11.0"
 babel = "^2.16.0"
 pyyaml = "^6.0.0"
@@ -21,7 +21,7 @@ ruff = "^0.8.0"
 mypy = "^1.13.0"
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py310"
 respect-gitignore = true
 force-exclude = true  # exclude ignored files if they passed via CLI
 fix = true
@@ -48,7 +48,7 @@ select = [
 convention = "numpy"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 ignore_missing_imports = false
 explicit_package_bases = true
 namespace_packages = true

@@ -109,7 +109,7 @@ class KarmaManager:
             username = self._transport.lookup_username(user_id)
             msg = self._format.new_voting(username, points)
 
-            result = self._transport.post(channel, msg, ts=ts)
+            response = self._transport.post(channel, msg, ts=ts)
 
             session.add(
                 Voting(
@@ -118,7 +118,7 @@ class KarmaManager:
                     target_id=user_id,
                     channel=channel,
                     message_ts=ts,
-                    bot_message_ts=result["ts"],
+                    bot_message_ts=response["ts"],
                     message_text=text,
                     karma=points,
                 )
