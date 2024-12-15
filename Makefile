@@ -1,5 +1,6 @@
 install:
 	poetry install
+	poetry shell
 
 test:
 	poetry run pytest -vv tests/
@@ -10,5 +11,8 @@ lint:
 
 types:
 	mypy .
+
+build:
+	poetry build
 
 all: install lint types test

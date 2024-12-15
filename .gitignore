@@ -8,3 +8,5 @@ env_vars.py
 karma.db
 .pytest_cache/
 .mypy_cache/
+.ruff_cache
+dist/*

@@ -10,7 +10,6 @@ RUN poetry config virtualenvs.create false
 RUN poetry install --no-dev --no-interaction --no-ansi
 
 COPY lang/ /app/lang/
-RUN pybabel compile -d /app/lang/
 
 COPY karmabot/ /app/karmabot/
 COPY config.yml logging.yml app.py /app/

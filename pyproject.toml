@@ -6,14 +6,19 @@ readme = "README.md"
 license = "LICENSE"
 authors = ["Eugene <1511447+fa7ca7@users.noreply.github.com>"]
 
+include = [
+    "data/config.yml",
+    "lang/**/*.mo",
+]
+
 [tool.poetry.dependencies]
 python = "^3.10"
 apscheduler = "^3.11.0"
-babel = "^2.16.0"
 pyyaml = "^6.0.0"
 slack-sdk = "^3.33.0"
 sqlalchemy = "^2.0.0"
 types-pyyaml = "^6.0.12.20240917"
+click = "^8.1.7"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0"
@@ -63,4 +68,5 @@ requires = ["poetry>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-karmabot = "app:main"
+karmabot = "karmabot.app:cli_app"
+karmabot-init = "karmabot.app:cli_init"

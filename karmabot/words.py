@@ -1,4 +1,6 @@
 import gettext
+import importlib
+import pathlib
 
 
 class Status:
@@ -21,10 +23,9 @@ class Format:
     )
 
     def __init__(self, lang, votes_up_emoji, votes_down_emoji, timeout):
-        translate = gettext.translation(
-            domain="messages", localedir="lang", languages=(lang,), fallback=True
-        )
-        translate.install()
+        lang_resource = importlib.resources.files("lang")
+        with importlib.resources.as_file(lang_resource) as dir_path:
+            self._install_lang_pack(dir_path, lang)
         self._votes_up_emoji = votes_up_emoji
         self._votes_down_emoji = votes_down_emoji
         self._display_time = self.display_time(int(timeout))
@@ -101,3 +102,16 @@ class Format:
         return Format.message(
             Color.ERROR, gettext.gettext("cmd_error"), image="https://i.imgflip.com/2cuafm.jpg"
         )
+
+    def _install_lang_pack(self, lang_dir_path: pathlib.Path, lang: str) -> None:
+        """Compile and install a language pack."""
+        gettext.install(
+            domain="messages",
+            localedir=str(lang_dir_path),
+            names=(lang,),
+        )
+        gettext.bindtextdomain(
+            domain="messages",
+            localedir=str(lang_dir_path),
+        )
+        gettext.textdomain("messages")

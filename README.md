@@ -41,8 +41,6 @@ $ # poetry
 $ poetry config virtualenvs.create true
 $ poetry config virtualenvs.in-project true
 $ poetry install
-$ # lang
-$ poetry run pybabel compile -d /app/lang/
 $ # run
 $ poetry run python ./app.py
 ```
@@ -57,8 +55,6 @@ $ # poetry
 $ poetry config virtualenvs.create true
 $ poetry config virtualenvs.in-project true
 $ poetry install
-$ # lang
-$ poetry run pybabel compile -d /app/lang/
 $ # systemd
 $ sudo cp .karmabot/systemd/karmabot.service /etc/systemd/system
 $ sudo systemctl start karmabot.service
@@ -117,7 +113,7 @@ All the commands should be sent into direct messages to **karmabot**.
 
 ## Translation
 
-Multi-language support in this project depends on `gettext` and `pybabel`.
+Multi-language support in this project depends on `gettext`.
 
 ```sh
 sudo apt-get install gettext
@@ -125,7 +121,7 @@ sudo apt-get install gettext
 
 In order to add support for a new language one runs
 
-```
+```sh
 msginit --no-translator -i lang/karmabot.pot -l uk_UA.UTF-8
 ```
 
