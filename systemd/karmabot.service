@@ -8,8 +8,8 @@ Type=simple
 Restart=always
 RestartSec=1
 User=pi
-WorkingDirectory=/home/pi/.karmabot/
-ExecStart=/usr/bin/env poetry run 
+WorkingDirectory=/home/pi
+ExecStart=/usr/bin/env karmabot
 
 [Install]
 WantedBy=multi-user.target
