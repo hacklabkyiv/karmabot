@@ -22,7 +22,9 @@ class Format:
         1,
     )
 
-    def __init__(self, lang, votes_up_emoji, votes_down_emoji, timeout):
+    def __init__(
+        self, lang: str, votes_up_emoji: list[str], votes_down_emoji: list[str], timeout: str
+    ) -> None:
         lang_resource = importlib.resources.files("lang")
         with importlib.resources.as_file(lang_resource) as dir_path:
             self._install_lang_pack(dir_path, lang)
@@ -31,7 +33,7 @@ class Format:
         self._display_time = self.display_time(int(timeout))
 
     @staticmethod
-    def message(color, text, image=None):
+    def message(color, text: str, image: str | None = None) -> dict:
         return {
             "attachments": [
                 {
@@ -46,7 +48,7 @@ class Format:
             ]
         }
 
-    def display_time(self, seconds, granularity=4):
+    def display_time(self, seconds, granularity=4) -> str:
         result = []
 
         for i, count in enumerate(Format._INTERVALS):
@@ -57,10 +59,10 @@ class Format:
                 result.append(f"{value}{name}")
         return ", ".join(result[:granularity])
 
-    def hello(self):
+    def hello(self) -> dict:
         return Format.message(Color.INFO, gettext.gettext("hello"))
 
-    def new_voting(self, username, karma):
+    def new_voting(self, username: str, karma: int) -> dict:
         text = gettext.gettext("new_voting").format(
             Status.OPEN,
             karma,
@@ -71,7 +73,7 @@ class Format:
         )
         return Format.message(Color.INFO, text)
 
-    def voting_result(self, username, karma, success):
+    def voting_result(self, username: str, karma: int, success: bool) -> dict:
         if success:
             emoji = ":tada:" if karma > 0 else ":face_palm:"
             text = gettext.gettext("voting_result_success").format(
@@ -83,22 +85,22 @@ class Format:
 
         return Format.message(Color.INFO, text)
 
-    def report_karma(self, username, karma):
+    def report_karma(self, username: str, karma: int) -> dict:
         return Format.message(Color.INFO, gettext.gettext("report_karma").format(username, karma))
 
-    def parsing_error(self):
+    def parsing_error(self) -> dict:
         return Format.message(Color.ERROR, gettext.gettext("parsing_error").format(":robot_face:"))
 
-    def max_diff_error(self, max_diff):
+    def max_diff_error(self, max_diff: int) -> dict:
         return Format.message(Color.ERROR, gettext.gettext("max_diff_error").format(max_diff))
 
-    def strange_error(self):
+    def strange_error(self) -> dict:
         return Format.message(Color.ERROR, gettext.gettext("strange_error").format(":grimacing:"))
 
-    def robo_error(self):
+    def robo_error(self) -> dict:
         return Format.message(Color.ERROR, gettext.gettext("robo_error").format(":robot_face:"))
 
-    def cmd_error(self):
+    def cmd_error(self) -> dict:
         return Format.message(
             Color.ERROR, gettext.gettext("cmd_error"), image="https://i.imgflip.com/2cuafm.jpg"
         )
