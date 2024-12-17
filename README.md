@@ -17,13 +17,22 @@ This means that no karma will be applied unless community react using emoji.*
 
 ## Installation
 
-### 🐳 Docker
+### pipx
+
+```sh
+$ pipx install https://github.com/hacklabkyiv/karmabot
+$ karmabot-init
+$ # update config at ~/.config/karmabot/config.yml
+$ karmabot
+```
+
+### Docker
 
 Install `docker` and then:
 
 ```sh
-$ git clone https://github.com/dethoter/karmabot && cd karmabot
-$ cp config.yml.template config.yml
+$ git clone https://github.com/hacklabkyiv/karmabot && cd karmabot
+$ # update config at ./data/config.yml
 $ docker build -t karmabot .
 $ docker run -d --name karmabot --restart=unless-stopped --network=host -it karmabot
 ```
@@ -31,32 +40,23 @@ $ docker run -d --name karmabot --restart=unless-stopped --network=host -it karm
 This `Dockerfile` from repo contains setup for RaspberryPi.
 You can modify **FROM** field in order to target your distro.
 
-### 💻 Locally
+### Locally
 
 ```sh
-$ git clone https://github.com/dethoter/karmabot && cd karmabot
-$ # config
-$ cp config.yml.template config.yml
-$ # poetry
-$ poetry config virtualenvs.create true
-$ poetry config virtualenvs.in-project true
-$ poetry install
-$ # run
-$ poetry run python ./app.py
+$ git clone https://github.com/hacklabkyiv/karmabot && cd karmabot
+$ make install
+$ karmabot-init
+$ # update config at ~/.config/karmabot/config.yml
+$ karmabot
 ```
 
-### 📝 systemd
+### systemd
 
 ```sh
-$ git clone https://github.com/dethoter/karmabot .karmabot
-$ # config
-$ cp .karmabot/config.yml.template .karmabot/config.yml
-$ # poetry
-$ poetry config virtualenvs.create true
-$ poetry config virtualenvs.in-project true
-$ poetry install
-$ # systemd
-$ sudo cp .karmabot/systemd/karmabot.service /etc/systemd/system
+$ pipx install https://github.com/hacklabkyiv/karmabot
+$ karmabot-init
+$ # update config at ~/.config/karmabot/config.yml
+$ sudo wget https://raw.githubusercontent.com/hacklabkyiv/karmabot/refs/heads/main/systemd/karmabot.service -o /etc/systemd/system/karmabot.service
 $ sudo systemctl start karmabot.service
 $ sudo systemctl enable karmabot.service
 ```
