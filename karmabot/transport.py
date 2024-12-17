@@ -2,24 +2,25 @@ from collections import Counter
 
 from slack_sdk import WebClient
 from slack_sdk.rtm_v2 import RTMClient
+from slack_sdk.web import SlackResponse
 
 from .logging import logger
 
 
 class Transport:
-    def __init__(self, token):
+    def __init__(self, token: str) -> None:
         self.client = WebClient(token=token)
         self._slack_reader = RTMClient(token=token)
-        self._username_cache = {}
-        self._channel_name_cache = {}
+        self._username_cache: dict = {}
+        self._channel_name_cache: dict = {}
 
-    def register_callback(self, action, callback_fn):
+    def register_callback(self, action, callback_fn) -> None:
         self._slack_reader.on(action)(callback_fn)
 
-    def start(self):
+    def start(self) -> None:
         self._slack_reader.start()
 
-    def lookup_username(self, user_id):
+    def lookup_username(self, user_id: str) -> str:
         user = user_id.strip("<>@")
         username = self._username_cache.get(user)
         if not username:
@@ -28,7 +29,7 @@ class Transport:
             self._username_cache[user] = username
         return username
 
-    def lookup_channel_name(self, channel_id):
+    def lookup_channel_name(self, channel_id: str) -> str:
         channel_id = channel_id.strip("<>@")
         channel_name = self._channel_name_cache.get(channel_id)
         if not channel_name:
@@ -37,7 +38,7 @@ class Transport:
             self._channel_name_cache[channel_id] = channel_name
         return channel_name
 
-    def reactions_get(self, channel, initial_msg_ts, bot_msg_ts):
+    def reactions_get(self, channel: str, initial_msg_ts: str, bot_msg_ts: str) -> Counter | None:
         r: Counter = Counter()
         for ts in (initial_msg_ts, bot_msg_ts):
             result = self.client.reactions_get(channel=channel, timestamp=ts)
@@ -50,13 +51,13 @@ class Transport:
                 r[c["name"]] += c["count"]
         return r
 
-    def post(self, channel, msg, ts=""):
+    def post(self, channel: str, msg: dict, ts: str | None = None) -> SlackResponse:
         logger.debug(f"Sending message to {channel}: {msg}")
         return self.client.chat_postMessage(
             channel=channel, link_names=True, as_user=True, thread_ts=ts, **msg
         )
 
-    def update(self, channel, msg, ts):
+    def update(self, channel: str, msg: dict, ts: str) -> SlackResponse:
         logger.debug(f"Sending update to {channel}: {msg}")
         return self.client.chat_update(
             channel=channel, link_names=True, as_user=True, ts=ts, **msg
