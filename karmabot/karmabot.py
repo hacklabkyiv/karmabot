@@ -57,8 +57,6 @@ class Karmabot:
         self._config = cfg
 
         karma_config = self._config["karma"]
-        db_config = self._config["db"]
-
         self._admins = self._config["admins"]
 
         self._transport = Transport(self._config["slack_token"])
@@ -73,7 +71,7 @@ class Karmabot:
         self._manager = KarmaManager(
             karma_config=karma_config,
             digest_channel=digest_cfg.get("channel"),
-            db_config=db_config,
+            db_uri=self._config["db"],
             transport=self._transport,
             fmt=self._format,
         )

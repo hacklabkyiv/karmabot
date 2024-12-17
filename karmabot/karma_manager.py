@@ -9,7 +9,7 @@ from .words import Color
 
 
 class KarmaManager:
-    def __init__(self, karma_config, db_config, transport, fmt, digest_channel=None):
+    def __init__(self, karma_config, db_uri: str, transport, fmt, digest_channel=None):
         self._initial_value = karma_config["initial_value"]
         self._max_diff = karma_config["max_diff"]
         self._self_karma = karma_config["self_karma"]
@@ -22,7 +22,7 @@ class KarmaManager:
 
         self._transport = transport
         self._format = fmt
-        self._session_maker = create_session_maker(db_config)
+        self._session_maker = create_session_maker(db_uri)
 
     def get(self, user_id, channel):
         with self._session_maker() as session:

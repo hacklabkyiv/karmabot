@@ -11,10 +11,7 @@ from karmabot.words import Color
 from .common import SAMPLE_KARMA, TEST_CHANNEL, TEST_KARMA, TEST_MSG, TEST_USER, TEST_USERNAME
 
 CONFIG: dict = {
-    "db": {
-        "type": "sqlite",
-        "name": ":memory:",
-    },
+    "db": "sqlite://:memory:",
     "karma": {
         "initial_value": 888,
         "upvote_emoji": ["+1"],

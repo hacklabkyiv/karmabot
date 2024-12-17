@@ -7,6 +7,8 @@ admins:
   - bot_admin_slack_name_1
   - bot_admin_slack_name_2
 
+db: postgresql://admin:qwerty@127.0.0.1:5432/mydb
+
 digest:
   channel: general
   day: 1
@@ -25,13 +27,5 @@ karma:
   downvote_emoji:
     - "-1"
     - "thumbsdown"
-
-db:
-  type: postgresql
-  user: admin
-  password: qwerty
-  host: 127.0.0.1
-  port: 5432
-  name: mydb
 
 # See README for how to configure these params

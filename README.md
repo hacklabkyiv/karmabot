@@ -89,12 +89,7 @@ Set a channel in `digest.channel` and a day of a month in `digest.day` and get a
 | `karma.self_karma`          | no        | allow users to add/remove karma to themselves | `false`                     |
 | `digest.channel`         | no        | channel to post digest to                |                                  |
 | `digest.day`             | no        | a day when auto digest will be posted    | `1`                              |
-| `db.type`                   | no        | type of database (may be any DB that sqlalchemy supports) | `postgresql`    |
-| `db.user`                   | no        | user of database                         |                                  |
-| `db.password`               | no        | password for database                    |                                  |
-| `db.host`                   | no        | host of database                         | `127.0.0.1`                      |
-| `db.port`                   | no        | port of database                         | `5432`                           |
-| `db.name`                   | **yes**   | name of database                         | `karma`                          |
+| `db`                   | **yes**        | DB URI | `postgresql://admin:qwe123@localhost:5432/mydb`    |
 
 
 ### 📖 Commands

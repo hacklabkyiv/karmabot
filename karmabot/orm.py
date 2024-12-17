@@ -9,24 +9,7 @@ class OrmBase(DeclarativeBase):
     pass
 
 
-def make_db_uri(cfg):
-    db_type = cfg["type"]
-    if db_type == "sqlite":
-        return "sqlite:///" + cfg["name"]
-
-    user = cfg.get("user", "")
-    password = cfg.get("password", "") if user else ""
-    auth = f"{user}:{password}@" if user and password else ""
-
-    host = cfg.get("host", "127.0.0.1")
-    port = cfg.get("port", "5432")
-
-    db_name = cfg["name"]
-    return f"db_type://{auth}{host}:{port}/{db_name}"
-
-
-def create_session_maker(db_config):
-    db_uri = make_db_uri(db_config)
+def create_session_maker(db_uri: str):
     engine = create_engine(db_uri)
     OrmBase.metadata.create_all(engine, checkfirst=True)
     Session = sessionmaker(bind=engine)
