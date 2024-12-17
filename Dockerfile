@@ -1,18 +1,12 @@
-FROM python:3.8-slim-buster
+FROM python:3.10-slim
 
 RUN pip install -U pip
-RUN pip install poetry==1.0.5
+RUN pip install poetry==1.8.4
 
 WORKDIR /app
-COPY pyproject.toml poetry.lock /app/
+COPY pyproject.toml poetry.lock poetry.toml /app/
+COPY data karmabot lang /app/
 
-RUN poetry config virtualenvs.create false
-RUN poetry install --no-dev --no-interaction --no-ansi
+RUN poetry install --without dev --no-interaction --no-ansi
 
-COPY lang/ /app/lang/
-
-COPY karmabot/ /app/karmabot/
-COPY config.yml logging.yml app.py /app/
-
-ENTRYPOINT ["python"]
-CMD ["app.py"]
+CMD ["karmabot"]
