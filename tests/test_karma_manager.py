@@ -1,32 +1,35 @@
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
 
+from karmabot.config import KarmabotConfig
 from karmabot.karma_manager import KarmaManager
 from karmabot.orm import Karma, Voting, create_session_maker
 from karmabot.words import Color
 
 from .common import SAMPLE_KARMA, TEST_CHANNEL, TEST_KARMA, TEST_MSG, TEST_USER, TEST_USERNAME
 
-CONFIG: dict = {
-    "db": "sqlite://:memory:",
-    "karma": {
-        "initial_value": 888,
-        "upvote_emoji": ["+1"],
-        "downvote_emoji": ["-1"],
-        "vote_timeout": 0.1,
-        "self_karma": False,
-        "max_diff": 10,
-        "keep_history": 100000,
-    },
-}
+CONFIG = KarmabotConfig.model_validate(
+    {
+        "db": "sqlite://:memory:",
+        "karma": {
+            "initial_value": 888,
+            "upvote_emoji": ["+1"],
+            "downvote_emoji": ["-1"],
+            "vote_timeout": 0.1,
+            "self_karma": False,
+            "max_diff": 10,
+            "keep_history": 100000,
+        },
+    }
+)
 
 
 @pytest.fixture
 def new_session_maker():
-    session_class = create_session_maker(CONFIG["db"])
+    session_class = create_session_maker(CONFIG.db)
     with session_class() as s:
         for u, k in SAMPLE_KARMA.items():
             s.add(Karma(user_id=u, karma=k))
@@ -51,7 +54,7 @@ def fmt():
 
 @pytest.fixture
 def km(transport, fmt, new_session_maker):
-    km = KarmaManager(CONFIG["karma"], CONFIG["db"], transport, fmt, MagicMock())
+    km = KarmaManager(CONFIG, transport, fmt)
     km._session_maker = new_session_maker
     return km
 
@@ -68,7 +71,7 @@ def test_get_non_existing(km):
     km.get("non_existing_user", TEST_CHANNEL)
 
     km._transport.lookup_username.assert_called_with("non_existing_user")
-    km._format.report_karma.assert_called_with(TEST_USERNAME, CONFIG["karma"]["initial_value"])
+    km._format.report_karma.assert_called_with(TEST_USERNAME, CONFIG.karma.initial_value)
     km._transport.post.assert_called_with(TEST_CHANNEL, TEST_MSG)
 
 
@@ -120,9 +123,7 @@ def test_pending_print(km):
     km._transport.lookup_channel_name.return_value = "general"
     km.pending(TEST_CHANNEL)
 
-    expired_dt = datetime.fromtimestamp(float(message_ts)) + timedelta(
-        seconds=CONFIG["karma"]["vote_timeout"]
-    )
+    expired_dt = datetime.fromtimestamp(float(message_ts)) + CONFIG.karma.vote_timeout
     expired = expired_dt.isoformat()
 
     expect = "\n".join(
@@ -177,7 +178,7 @@ def test_close_expired_votes(km, votes, result_karma):
     )
     km._session.add(expected)
 
-    now += timedelta(seconds=CONFIG["karma"]["vote_timeout"])
+    now += CONFIG.karma.vote_timeout
     km.close_expired_votings(now)
 
     assert km._session.query(Karma).filter_by(user_id=TEST_USER).first().karma == result_karma

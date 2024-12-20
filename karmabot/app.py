@@ -2,11 +2,11 @@ import importlib
 import importlib.resources
 import logging
 import pathlib
-from pprint import pformat
 
 import click
 import yaml
 
+from .config import KarmabotConfig
 from .karmabot import Karmabot
 
 CONFIG_FILE_NAME = "config.yml"
@@ -21,10 +21,10 @@ def cli_app(config: str):
         raise click.FileError(config, "Can't locate a config file")
     with config_path.open("r") as f:
         config_dict = yaml.safe_load(f)
-    logging.debug("Config: %s", pformat(config_dict))
-
-    bot = Karmabot(config_dict)
-    bot.listen()
+    karmabot_config = KarmabotConfig.model_validate(config_dict)
+    logging.debug("Config: %s", karmabot_config)
+    bot = Karmabot(karmabot_config)
+    bot.run()
 
 
 @click.command(help="Create a default config.")
@@ -39,4 +39,4 @@ def cli_init(config: str):
         text = default_config_path.read_text()
     config_path.parent.mkdir(exist_ok=True, parents=True)
     config_path.write_text(text)
-    logging.info("Inited with config: %s", pformat(text))
+    logging.info("Inited with config: %s", text)

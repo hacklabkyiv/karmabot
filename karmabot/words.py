@@ -1,3 +1,4 @@
+import datetime
 import gettext
 import importlib
 import pathlib
@@ -23,14 +24,18 @@ class Format:
     )
 
     def __init__(
-        self, lang: str, votes_up_emoji: list[str], votes_down_emoji: list[str], timeout: str
+        self,
+        lang: str,
+        votes_up_emoji: list[str],
+        votes_down_emoji: list[str],
+        timeout: datetime.timedelta,
     ) -> None:
         lang_resource = importlib.resources.files("lang")
         with importlib.resources.as_file(lang_resource) as dir_path:
             self._install_lang_pack(dir_path, lang)
         self._votes_up_emoji = votes_up_emoji
         self._votes_down_emoji = votes_down_emoji
-        self._display_time = self.display_time(int(timeout))
+        self._display_time = self.display_time(timeout.seconds)
 
     @staticmethod
     def message(color, text: str, image: str | None = None) -> dict:

@@ -38,8 +38,10 @@ class Transport:
             self._channel_name_cache[channel_id] = channel_name
         return channel_name
 
-    def reactions_get(self, channel: str, initial_msg_ts: str, bot_msg_ts: str) -> Counter | None:
-        r: Counter = Counter()
+    def reactions_get(
+        self, channel: str, initial_msg_ts: str, bot_msg_ts: str
+    ) -> Counter[str] | None:
+        r: Counter[str] = Counter()
         for ts in (initial_msg_ts, bot_msg_ts):
             result = self.client.reactions_get(channel=channel, timestamp=ts)
             logger.debug(f"Getting reactions: {result}")

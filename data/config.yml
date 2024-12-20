@@ -17,8 +17,8 @@ karma:
   initial_value: 0
   max_diff: 5
   self_karma: yes
-  vote_timeout: 10800.0 # 3 hours
-  keep_history: 7884000.0 # 3 months
+  vote_timeout: 3H
+  keep_history: P90DT
   upvote_emoji:
     - "+1"
     - "partyparrot"
