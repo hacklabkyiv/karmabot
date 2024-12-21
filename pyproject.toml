@@ -5,10 +5,11 @@ description = "Slack bot that listens for and performs karma operations"
 readme = "README.md"
 license = "LICENSE"
 authors = ["Eugene <1511447+fa7ca7@users.noreply.github.com>"]
-
+package-mode = true
 include = [
     "data/config.yml",
     "lang/**/*.mo",
+    "lang/**/*.po",
 ]
 
 [tool.poetry.dependencies]

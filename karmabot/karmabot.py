@@ -1,3 +1,4 @@
+import functools
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -27,8 +28,8 @@ class Command:
 
 class Karmabot:
     def __init__(self, config: KarmabotConfig) -> None:
-        self._scheduler = _create_scheduler()
         self._config = config
+        self._scheduler = _create_scheduler(self._config.db)
         self._admins = self._config.admins
         self._transport = Transport(self._config.slack_token)
         self._format = Format(
@@ -46,10 +47,14 @@ class Karmabot:
         self._commands = self._init_commands()
         self._init_monthly_digest()
 
-        self._transport.register_callback("team_join", self._handle_team_join)
-        self._transport.register_callback("message", self._handle_message)
+        self._transport.register_callback(
+            "team_join", functools.partial(Karmabot._handle_team_join, self)
+        )
+        self._transport.register_callback(
+            "message", functools.partial(Karmabot._handle_message, self)
+        )
 
-    def run(self):
+    def run(self) -> None:
         self._scheduler.start()
         self._transport.start()
         while True:
@@ -57,7 +62,7 @@ class Karmabot:
             self._manager.close_expired_votings(now)
             self._manager.remove_old_votings()
 
-    def _handle_dm_cmd(self, initiator_id, channel, text):
+    def _handle_dm_cmd(self, initiator_id: str, channel: str, text: str) -> bool:
         # Handling only DM messages and skipping own messages
         if not channel.startswith("D") or self._is_me(initiator_id):
             return False
@@ -91,9 +96,7 @@ class Karmabot:
         user_id = event["user"]["id"]
         new_dm = self._transport.client.im_open(user=user_id)
         self._transport.post(new_dm["channel"]["id"], self._format.hello())
-
         logger.info("Team joined by user_id=%s", user_id)
-        return True
 
     def _handle_message(self, client: RTMClient, event: dict) -> None:
         logger.debug("Processing event: %s", event)
@@ -196,8 +199,8 @@ class Karmabot:
         )
 
 
-def _create_scheduler():
-    jobstores = {"default": SQLAlchemyJobStore(tablename="karmabot_scheduler")}
+def _create_scheduler(url: str):
+    jobstores = {"default": SQLAlchemyJobStore(url=url, tablename="karmabot_scheduler")}
     executors = {"default": ProcessPoolExecutor()}
     job_defaults = {
         "coalesce": True,  # run only once if turns out we need to run > 1 time
