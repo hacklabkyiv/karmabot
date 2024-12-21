@@ -128,7 +128,7 @@ class KarmaManager:
             )
             session.commit()
 
-    def close_expired_votings(self, now):
+    def close_expired_votings(self, now) -> bool:
         result = True
         with self._session_maker() as session:
             expired = session.query(Voting).filter(
