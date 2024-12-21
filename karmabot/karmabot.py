@@ -191,7 +191,8 @@ class Karmabot:
             self._manager.digest,
             id="monthly_digest",
             trigger="cron",
-            minute=self._config.digest.day,
+            day=self._config.digest.day,
+            replace_existing=True,
         )
 
 
@@ -203,6 +204,8 @@ def _create_scheduler():
         "max_instances": 1,  # max number of job of one type running simultaneously
     }
     scheduler = BackgroundScheduler(
-        jobstores=jobstores, executors=executors, job_defaults=job_defaults
+        jobstores=jobstores,
+        executors=executors,
+        job_defaults=job_defaults,
     )
     return scheduler
