@@ -1,25 +1,20 @@
 import re
 
+REGEX_USER = "<@([A-Za-z]+[A-Za-z0-9-_]+)>"
+REGEX_KARMA = r"([+]{1,}|[-]{1,})"
+
 
 class Parse:
-    REGEX = {
-        "user": "<@([A-Za-z]+[A-Za-z0-9-_]+)>",
-        "karma": r"([+]{1,}|[-]{1,})",
-    }
-
     @staticmethod
     def user_mention(text: str) -> str | None:
-        user_mention_match = re.match(Parse.REGEX["user"] + "+", text)
+        user_mention_match = re.match(f"{REGEX_USER}+", text)
         if user_mention_match:
             return user_mention_match[0]
         return None
 
     @staticmethod
     def karma_change(text: str) -> tuple[str, str, int] | None:
-        full_match = re.match(
-            Parse.REGEX["user"] + " " + Parse.REGEX["user"] + " " + Parse.REGEX["karma"] + "+",
-            text,
-        )
+        full_match = re.match(f"{REGEX_USER} {REGEX_USER} {REGEX_KARMA}+", text)
         if not full_match:
             return None
 
@@ -30,14 +25,14 @@ class Parse:
 
     @staticmethod
     def cmd_get(text: str) -> str | None:
-        r = re.match("get" + " " + Parse.REGEX["user"], text)
+        r = re.match(f"get {REGEX_USER}", text)
         if not r:
             return None
         return r[1]
 
     @staticmethod
     def cmd_set(text: str) -> tuple[str, int] | None:
-        r = re.match("set" + " " + Parse.REGEX["user"] + " " + "([-+]?[0-9]+)$", text)
+        r = re.match(f"set {REGEX_USER} ([-+]?[0-9]+)$", text)
         if not r:
             return None
         user_id, karma = r.groups()
