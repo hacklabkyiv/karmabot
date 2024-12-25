@@ -158,7 +158,7 @@ def test_close_expired_votes(
         session.add(pending_voting)
 
     now += config.karma.vote_timeout
-    km.close_expired_votings(now)
+    km.close_expired_votings()
 
     with km._session_maker() as session:
         assert session.query(Karma).filter_by(user_id=test_user).first().karma == result_karma

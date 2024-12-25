@@ -128,7 +128,8 @@ class KarmaManager:
             )
             session.commit()
 
-    def close_expired_votings(self, now) -> bool:
+    def close_expired_votings(self) -> bool:
+        now = datetime.now().timestamp()
         result = True
         with self._session_maker() as session:
             expired = session.query(Voting).filter(
@@ -139,7 +140,9 @@ class KarmaManager:
                 logger.debug("Expired voting: %s", e)
 
                 reactions = self._transport.reactions_get(
-                    e.channel, e.message_ts, e.bot_message_ts
+                    channel=e.channel,
+                    initial_msg_ts=e.message_ts,
+                    bot_msg_ts=e.bot_message_ts,
                 )
                 if reactions is None:
                     result = False

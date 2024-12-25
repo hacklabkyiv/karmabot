@@ -1,12 +1,10 @@
-import functools
-import time
 from dataclasses import dataclass
 from typing import Any
 
 from apscheduler.executors.pool import ProcessPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
-from slack_sdk.rtm_v2 import RTMClient
+from slack_sdk.web import WebClient
 
 from .config import KarmabotConfig
 from .karma_manager import KarmaManager
@@ -47,25 +45,68 @@ class Karmabot:
         self._commands = self._init_commands()
         self._init_monthly_digest()
 
-        self._transport.register_callback(
-            "team_join", functools.partial(Karmabot._handle_team_join, self)
-        )
-        self._transport.register_callback(
-            "message", functools.partial(Karmabot._handle_message, self)
-        )
+        def _team_join_callback(client, message):
+            self._handle_team_join(client, message)
+
+        self._transport.slack_app.event("team_join")(_team_join_callback)
+
+        def _app_mention_callback(client, message):
+            self._handle_app_mention(client, message)
+
+        self._transport.slack_app.event("app_mention")(_app_mention_callback)
+
+        def _dm_message_callback(client, message):
+            self._handle_dm_cmd(client, message)
+
+        self._transport.slack_app.event("message")(_dm_message_callback)
 
     def run(self) -> None:
         self._scheduler.start()
         self._transport.start()
+        # Move to a scheduler job
         while True:
-            now = time.time()
-            self._manager.close_expired_votings(now)
+            self._manager.close_expired_votings()
             self._manager.remove_old_votings()
 
-    def _handle_dm_cmd(self, initiator_id: str, channel: str, text: str) -> bool:
+    def _handle_team_join(self, client: WebClient, event: dict):
+        logger.debug("Processing event: %s", event)
+        user_id = event["user"]["id"]
+        self._transport.post_im(user_id, self._format.hello())
+        logger.info("Team joined by user_id=%s", user_id)
+
+    def _handle_app_mention(self, client: WebClient, event: dict) -> None:
+        logger.debug("Processing event: %s", event)
+
+        event_fields = set(event.keys())
+        if not REQUIRED_MESSAGE_FIELDS.issubset(event_fields):
+            logger.debug("Not enough fields for: %s", event)
+            return
+
+        initiator_id = event["user"]
+        channel = event["channel"]
+        text = event["text"]
+        ts = event["ts"]
+
+        # Don't handle requests from private channels (aka groups)
+        if channel.startswith("G"):
+            logger.debug("Skip message in group %s", channel)
+            return
+
+        # Handle only messages with `@karmabot` at the beginning
+        user_id = Parse.user_mention(text)
+        if not user_id or not self._is_me(user_id):
+            logger.debug("Skip message not for bot: %s", text)
+            return
+        self._manager.create(initiator_id, channel, text, ts)
+
+    def _handle_dm_cmd(self, client: WebClient, event: dict) -> None:
+        initiator_id = event["user"]
+        channel = event["channel"]
+        text = event["text"]
+
         # Handling only DM messages and skipping own messages
         if not channel.startswith("D") or self._is_me(initiator_id):
-            return False
+            return
 
         for cmd in self._commands:
             args = cmd.parser(text)
@@ -80,56 +121,17 @@ class Karmabot:
 
             if cmd.admin_only and not self._is_admin(initiator_id):
                 # Command matched, but permissions are wrong
-                return True
+                return
 
-            if cmd.executor(*args, channel=channel):
-                logger.debug("Executed %s command", cmd.name)
-            else:
-                logger.error("Failed to execute %s commnad", cmd.name)
-            return True
+            cmd.executor(*args, channel=channel)
+            return
 
         self._transport.post(channel, self._format.cmd_error())
-        return False
 
-    def _handle_team_join(self, client: RTMClient, event: dict):
-        logger.debug("Processing event: %s", event)
-        user_id = event["user"]["id"]
-        new_dm = self._transport.client.im_open(user=user_id)
-        self._transport.post(new_dm["channel"]["id"], self._format.hello())
-        logger.info("Team joined by user_id=%s", user_id)
-
-    def _handle_message(self, client: RTMClient, event: dict) -> None:
-        logger.debug("Processing event: %s", event)
-
-        event_fields = set(event.keys())
-        if not REQUIRED_MESSAGE_FIELDS.issubset(event_fields):
-            logger.debug("Not enough fields for: %s", event)
-            return
-
-        initiator_id = event["user"]
-        channel = event["channel"]
-        text = event["text"]
-        ts = event["ts"]
-
-        if self._handle_dm_cmd(initiator_id, channel, text):
-            return
-
-        # Don't handle requests from private channels (aka groups)
-        if channel.startswith("G"):
-            logger.debug("Skip message in group %s", channel)
-            return
-
-        # Handle only messages with `@karmabot` at the beginning
-        user_id = Parse.user_mention(text)
-        if not user_id or not self._is_me(user_id):
-            logger.debug("Skip message not for bot: %s", text)
-            return
-        self._manager.create(initiator_id, channel, text, ts)
-
-    def _cmd_help(self, channel: str) -> None:
+    def _help(self, channel: str) -> None:
         self._transport.post(channel, self._format.hello())
 
-    def _cmd_config(self, channel: str) -> None:
+    def _get_config(self, channel: str) -> None:
         message = self._config.model_dump_json(exclude={"slack_token"})
         self._transport.post(channel, Format.message(Color.INFO, message))
 
@@ -162,13 +164,13 @@ class Karmabot:
             Command(
                 name="config",
                 parser=Parse.cmd_config,
-                executor=self._cmd_config,
-                admin_only=False,
+                executor=self._get_config,
+                admin_only=True,
             ),
             Command(
                 name="help",
                 parser=Parse.cmd_help,
-                executor=self._cmd_help,
+                executor=self._help,
                 admin_only=False,
             ),
         ]
@@ -179,12 +181,7 @@ class Karmabot:
             return
         if self._config.digest.day > 28:
             logger.warning("Failed to configure the montly digest: a day is greater than 28")
-        result = self._transport.client.conversations_list(
-            exclude_archived=True,
-            exclude_members=True,
-        )
-        channels = result.get("channels") or []
-        if not any(c["name"] == self._config.digest.channel for c in channels):
+        if not self._transport.channel_exists(self._config.digest.channel):
             logger.warning(
                 "Failed to configure the montly digest: channel [%s] not found",
                 self._config.digest.channel,
