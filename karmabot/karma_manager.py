@@ -27,21 +27,18 @@ class KarmaManager:
         self._format = fmt
         self._session_maker = create_session_maker(config.db)
 
-    def get(self, user_id: str, channel: str) -> bool:
+    def get(self, user_id: str, channel: str) -> None:
         with self._session_maker() as session:
             karma = session.query(Karma).filter_by(user_id=user_id).first()
             if karma:
                 value = karma.karma
             else:
                 value = self._initial_value
-                session.add(Karma(user_id=user_id, karma=value))
-                session.commit()
 
         username = self._transport.lookup_username(user_id)
         self._transport.post(channel, self._format.report_karma(username, value))
-        return True
 
-    def set(self, user_id: str, karma: int, channel: str) -> bool:
+    def set(self, user_id: str, karma: int, channel: str) -> None:
         with self._session_maker() as session:
             karma_change = session.query(Karma).filter_by(user_id=user_id).first()
             if karma_change:
@@ -52,15 +49,16 @@ class KarmaManager:
 
         username = self._transport.lookup_username(user_id)
         self._transport.post(channel, self._format.report_karma(username, karma))
-        return True
 
-    def digest(self) -> bool:
+    def digest(self) -> None:
         result = ["*username* => *karma*"]
         with self._session_maker() as session:
-            for r in (
+            all_karma = (
                 session.query(Karma).filter(Karma.karma != 0).order_by(Karma.karma.desc()).all()
-            ):
-                item = f"_{self._transport.lookup_username(r.user_id)}_ => *{r.karma}*"
+            )
+            for r in all_karma:
+                username = self._transport.lookup_username(r.user_id)
+                item = f"_{username}_ => *{r.karma}*"
                 result.append(item)
 
         # TODO: add translations
@@ -68,11 +66,9 @@ class KarmaManager:
             message = "Seems like nothing to show. All the karma is zero"
         else:
             message = "\n".join(result)
-
         self._transport.post(self._digest_channel, self._format.message(Color.INFO, message))
-        return True
 
-    def pending(self, channel: str) -> bool:
+    def pending(self, channel: str) -> None:
         result = ["*initiator* | *receiver* | *channel* | *karma* | *expired*"]
         with self._session_maker() as session:
             for r in session.query(Voting).all():
@@ -87,7 +83,7 @@ class KarmaManager:
             message = "\n".join(result)
 
         self._transport.post(channel, self._format.message(Color.INFO, message))
-        return True
+        return None
 
     def create(self, initiator_id: str, channel: str, text: str, ts: str) -> None:
         # Check for an already existing voting
@@ -128,9 +124,8 @@ class KarmaManager:
             )
             session.commit()
 
-    def close_expired_votings(self) -> bool:
+    def close_expired_votings(self) -> None:
         now = datetime.now().timestamp()
-        result = True
         with self._session_maker() as session:
             expired = session.query(Voting).filter(
                 cast(Voting.bot_message_ts, Float) + self._vote_timeout < now
@@ -145,7 +140,6 @@ class KarmaManager:
                     bot_msg_ts=e.bot_message_ts,
                 )
                 if reactions is None:
-                    result = False
                     logger.error("Failed to get messages for: %s", e)
                     session.delete(e)
                     continue
@@ -163,7 +157,6 @@ class KarmaManager:
                 self._close(e, success)
 
             session.commit()
-        return result
 
     def remove_old_votings(self) -> None:
         now = datetime.now()
