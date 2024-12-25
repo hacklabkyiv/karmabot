@@ -4,9 +4,7 @@ import logging
 import pathlib
 
 import click
-import yaml
 
-from .config import KarmabotConfig
 from .karmabot import Karmabot
 
 CONFIG_FILE_NAME = "config.yml"
@@ -19,11 +17,7 @@ def cli_app(config: str):
     config_path = pathlib.Path(config)
     if not config_path.exists():
         raise click.FileError(config, "Can't locate a config file")
-    with config_path.open("r") as f:
-        config_dict = yaml.safe_load(f)
-    karmabot_config = KarmabotConfig.model_validate(config_dict)
-    logging.debug("Config: %s", karmabot_config)
-    bot = Karmabot(karmabot_config)
+    bot = Karmabot(config_path)
     bot.run()
 
 

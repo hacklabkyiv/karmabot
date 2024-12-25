@@ -1,6 +1,8 @@
+import pathlib
 from dataclasses import dataclass
 from typing import Any
 
+import yaml
 from apscheduler.executors.pool import ProcessPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -25,8 +27,10 @@ class Command:
 
 
 class Karmabot:
-    def __init__(self, config: KarmabotConfig) -> None:
-        self._config = config
+    def __init__(self, config_path: pathlib.Path) -> None:
+        with config_path.open("r") as f:
+            config_dict = yaml.safe_load(f)
+        self._config = KarmabotConfig.model_validate(config_dict)
         self._scheduler = _create_scheduler(self._config.db)
         self._admins = self._config.admins
         self._transport = Transport(self._config.slack_token)
@@ -43,7 +47,8 @@ class Karmabot:
         )
 
         self._commands = self._init_commands()
-        self._init_monthly_digest()
+        self._init_monthly_digest(config_path)
+        self._init_voting_maintenance(config_path)
 
         def _team_join_callback(client, message):
             self._handle_team_join(client, message)
@@ -63,10 +68,6 @@ class Karmabot:
     def run(self) -> None:
         self._scheduler.start()
         self._transport.start()
-        # Move to a scheduler job
-        while True:
-            self._manager.close_expired_votings()
-            self._manager.remove_old_votings()
 
     def _handle_team_join(self, client: WebClient, event: dict):
         logger.debug("Processing event: %s", event)
@@ -175,7 +176,7 @@ class Karmabot:
             ),
         ]
 
-    def _init_monthly_digest(self) -> None:
+    def _init_monthly_digest(self, config_path: pathlib.Path) -> None:
         if self._config.digest.day <= 0:
             logger.warning("Failed to configure the montly digest: a day is less than 0")
             return
@@ -188,10 +189,21 @@ class Karmabot:
             )
             return
         self._scheduler.add_job(
-            self._manager.digest,
+            monthly_digest_func,
+            kwargs=dict(config_path=config_path),
             id="monthly_digest",
             trigger="cron",
             day=self._config.digest.day,
+            replace_existing=True,
+        )
+
+    def _init_voting_maintenance(self, config_path: pathlib.Path) -> None:
+        self._scheduler.add_job(
+            voting_maintenance_func,
+            kwargs=dict(config_path=config_path),
+            id="voting_maintenance",
+            trigger="cron",
+            minute="*",
             replace_existing=True,
         )
 
@@ -209,3 +221,53 @@ def _create_scheduler(url: str):
         job_defaults=job_defaults,
     )
     return scheduler
+
+
+def monthly_digest_func(config_path: pathlib.Path) -> None:
+    """Montly digest entry point.
+
+    Notes
+    =====
+
+    1. All the arguments must be picklable.
+    2. For security's and flexibility's sake the only argument passed
+    is a config path. This way we avoid re-creating jobs in case if config
+    was modified.
+    """
+    with config_path.open("r") as f:
+        config_dict = yaml.safe_load(f)
+    config = KarmabotConfig.model_validate(config_dict)
+    transport = Transport(config.slack_token)
+    format = Format(
+        lang=config.lang,
+        votes_up_emoji=config.karma.upvote_emoji,
+        votes_down_emoji=config.karma.downvote_emoji,
+        timeout=config.karma.vote_timeout,
+    )
+    manager = KarmaManager(
+        config=config,
+        transport=transport,
+        fmt=format,
+    )
+    manager.digest()
+
+
+def voting_maintenance_func(config_path: pathlib.Path) -> None:
+    """Close expired and delete outdated votings."""
+    with config_path.open("r") as f:
+        config_dict = yaml.safe_load(f)
+    config = KarmabotConfig.model_validate(config_dict)
+    transport = Transport(config.slack_token)
+    format = Format(
+        lang=config.lang,
+        votes_up_emoji=config.karma.upvote_emoji,
+        votes_down_emoji=config.karma.downvote_emoji,
+        timeout=config.karma.vote_timeout,
+    )
+    manager = KarmaManager(
+        config=config,
+        transport=transport,
+        fmt=format,
+    )
+    manager.close_expired_votings()
+    manager.remove_old_votings()
