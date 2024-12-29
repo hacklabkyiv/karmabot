@@ -4,13 +4,14 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk.web import SlackResponse
 
+from .config import KarmabotConfig
 from .logging import logger
 
 
 class Transport:
-    def __init__(self, token: str) -> None:
-        self.slack_app = App(token=token)
-        self._socket_mode_app = SocketModeHandler(self.slack_app, token)
+    def __init__(self, config: KarmabotConfig) -> None:
+        self.slack_app = App(token=config.slack_bot_token)
+        self._socket_mode_app = SocketModeHandler(self.slack_app, config.slack_app_token)
 
     def start(self) -> None:
         self._socket_mode_app.start()
@@ -53,10 +54,7 @@ class Transport:
         )
 
     def channel_exists(self, channel: str) -> bool:
-        result = self.slack_app.client.conversations_list(
-            exclude_archived=True,
-            exclude_members=True,
-        )
+        result = self.slack_app.client.conversations_list(exclude_archived=True)
         channels = result.get("channels") or []
         return any(c["name"] == channel for c in channels)
 

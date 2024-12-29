@@ -8,7 +8,8 @@ import pydantic_settings
 class KarmabotConfig(pydantic_settings.BaseSettings):
     log_level: str
     lang: str
-    slack_token: str
+    slack_bot_token: str
+    slack_app_token: str
     db: str
     admins: list[str]
     digest: KarmabotDigestConfig

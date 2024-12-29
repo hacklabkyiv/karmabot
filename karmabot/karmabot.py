@@ -33,7 +33,7 @@ class Karmabot:
         self._config = KarmabotConfig.model_validate(config_dict)
         self._scheduler = _create_scheduler(self._config.db)
         self._admins = self._config.admins
-        self._transport = Transport(self._config.slack_token)
+        self._transport = Transport(self._config)
         self._format = Format(
             lang=self._config.lang,
             votes_up_emoji=self._config.karma.upvote_emoji,
@@ -133,7 +133,7 @@ class Karmabot:
         self._transport.post(channel, self._format.hello())
 
     def _get_config(self, channel: str) -> None:
-        message = self._config.model_dump_json(exclude={"slack_token"})
+        message = self._config.model_dump_json(exclude={"slack_bot_token", "slack_app_token"})
         self._transport.post(channel, Format.message(Color.INFO, message))
 
     def _is_admin(self, initiator_id: str) -> bool:
@@ -209,7 +209,7 @@ class Karmabot:
 
 
 def _create_scheduler(url: str):
-    jobstores = {"default": SQLAlchemyJobStore(url=url, tablename="karmabot_scheduler")}
+    jobstores = {"default": SQLAlchemyJobStore(url=url)}
     executors = {"default": ProcessPoolExecutor()}
     job_defaults = {
         "coalesce": True,  # run only once if turns out we need to run > 1 time
@@ -237,7 +237,7 @@ def monthly_digest_func(config_path: pathlib.Path) -> None:
     with config_path.open("r") as f:
         config_dict = yaml.safe_load(f)
     config = KarmabotConfig.model_validate(config_dict)
-    transport = Transport(config.slack_token)
+    transport = Transport(config)
     format = Format(
         lang=config.lang,
         votes_up_emoji=config.karma.upvote_emoji,
@@ -257,7 +257,7 @@ def voting_maintenance_func(config_path: pathlib.Path) -> None:
     with config_path.open("r") as f:
         config_dict = yaml.safe_load(f)
     config = KarmabotConfig.model_validate(config_dict)
-    transport = Transport(config.slack_token)
+    transport = Transport(config)
     format = Format(
         lang=config.lang,
         votes_up_emoji=config.karma.upvote_emoji,

@@ -79,7 +79,8 @@ Set a channel in `digest.channel` and a day of a month in `digest.day` and get a
 | --------------------------- | --------- | ---------------------------------------- | -------------------------------- |
 | `log_level`                 | no        | set log level                            | `INFO`                           |
 | `lang`                  | no        | options: en, uk                          | en                               |
-| `slack_token`           | **yes**   | slack RTM token                          |                                  |
+| `slack_bot_token`           | **yes**   | slack bot token                          |                                  |
+| `slack_app_token`           | **yes**   | slack SocketMode app token                          |                                  |
 | `admins`                | no        | admins who can set karma to users        |                                  |
 | `karma.initial_value`       | no        | the default amount of user karma         | `0`                              |
 | `karma.max_diff`            | no        | the maximum amount of points that users can give/take at once | `5`         |
