@@ -74,6 +74,7 @@ class KarmaManager:
                 item = f"{self._transport.lookup_username(r.initiator_id)} | {self._transport.lookup_username(r.target_id)} | {self._transport.lookup_channel_name(r.channel)} | {r.karma} | {time_left.isoformat()}"
                 result.append(item)
 
+        # TODO: add translations
         if len(result) == 1:
             message = "Seems like nothing to show"
         else:
