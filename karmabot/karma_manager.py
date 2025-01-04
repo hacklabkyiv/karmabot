@@ -6,7 +6,6 @@ from sqlalchemy import Float, cast
 from .config import KarmabotConfig
 from .logging import logger
 from .orm import Karma, Voting, create_session_maker
-from .parse import Parse
 from .transport import Transport
 from .words import Color, Format
 
@@ -14,8 +13,6 @@ from .words import Color, Format
 class KarmaManager:
     def __init__(self, config: KarmabotConfig, transport: Transport, fmt: Format) -> None:
         self._initial_value = config.karma.initial_value
-        self._max_diff = config.karma.max_diff
-        self._self_karma = config.karma.self_karma
         self._vote_timeout = config.karma.vote_timeout
         self._upvote_emoji = config.karma.upvote_emoji
         self._downvote_emoji = config.karma.downvote_emoji
@@ -85,7 +82,17 @@ class KarmaManager:
         self._transport.post(channel, self._format.message(Color.INFO, message))
         return None
 
-    def create(self, initiator_id: str, channel: str, text: str, ts: str) -> None:
+    def create(
+        self,
+        *,
+        initiator_id: str,
+        target_id: str,
+        channel: str,
+        text: str,
+        ts: str,
+        bot_message_ts: str,
+        karma: int,
+    ) -> None:
         # Check for an already existing voting
         with self._session_maker() as session:
             instance = session.query(Voting).filter_by(uuid=(ts, channel)).first()
@@ -93,33 +100,16 @@ class KarmaManager:
                 logger.fatal("Voting already exists: ts=%s, channel=%s", ts, channel)
                 return
 
-            # Report an error if a request has not been parsed
-            result = Parse.karma_change(text)
-            if not result:
-                self._transport.post(channel, self._format.parsing_error(), ts=ts)
-                return
-
-            bot_id, user_id, points = result
-            error = self._karma_change_sanity_check(initiator_id, user_id, bot_id, points)
-            if error:
-                self._transport.post(channel, error, ts=ts)
-                return
-
-            username = self._transport.lookup_username(user_id)
-            msg = self._format.new_voting(username, points)
-
-            response = self._transport.post(channel, msg, ts=ts)
-
             session.add(
                 Voting(
                     created=datetime.now(),
                     initiator_id=initiator_id,
-                    target_id=user_id,
+                    target_id=target_id,
                     channel=channel,
                     message_ts=ts,
-                    bot_message_ts=response["ts"],
+                    bot_message_ts=bot_message_ts,
                     message_text=text,
-                    karma=points,
+                    karma=karma,
                 )
             )
             session.commit()
@@ -132,7 +122,7 @@ class KarmaManager:
             )
 
             for e in expired.all():
-                logger.debug("Expired voting: %s", e)
+                logger.info("Expired voting: %s", e)
 
                 reactions = self._transport.reactions_get(
                     channel=e.channel,
@@ -176,19 +166,8 @@ class KarmaManager:
         self._transport.update(karma_change.channel, result, karma_change.bot_message_ts)
 
     def _determine_success(self, reactions: Counter[str]) -> bool:
-        logger.debug("Reactions: %s", reactions)
+        logger.info("Reactions: %s", reactions)
         upvotes = [reactions[r] for r in self._upvote_emoji if r in reactions]
         downvotes = [reactions[r] for r in self._downvote_emoji if r in reactions]
-        logger.debug("Upvotes: %s\nDownvotes: %s", upvotes, downvotes)
+        logger.info("Upvotes: %s\nDownvotes: %s", upvotes, downvotes)
         return sum(upvotes) - sum(downvotes) > 0
-
-    def _karma_change_sanity_check(
-        self, initiator_id: str, user_id: str, bot_id: str, karma: int
-    ) -> dict | None:
-        if not self._self_karma and initiator_id == user_id:
-            return self._format.strange_error()
-        if user_id == bot_id:
-            return self._format.robo_error()
-        if abs(karma) > self._max_diff:
-            return self._format.max_diff_error(self._max_diff)
-        return None

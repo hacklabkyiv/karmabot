@@ -50,37 +50,37 @@ class Karmabot:
         self._init_monthly_digest(config_path)
         self._init_voting_maintenance(config_path)
 
-        def _team_join_callback(client, message):
-            self._handle_team_join(client, message)
+        @self._transport.slack_app.event("team_join")
+        def _team_join_callback(client, event):
+            print(f"[team_join] {event}")
+            self._handle_team_join(client, event)
 
-        self._transport.slack_app.event("team_join")(_team_join_callback)
+        @self._transport.slack_app.event("app_mention")
+        def _app_mention_callback(client, event):
+            print(f"[app_mention] {event}")
+            self._handle_app_mention(client, event)
 
-        def _app_mention_callback(client, message):
-            self._handle_app_mention(client, message)
-
-        self._transport.slack_app.event("app_mention")(_app_mention_callback)
-
-        def _dm_message_callback(client, message):
-            self._handle_dm_cmd(client, message)
-
-        self._transport.slack_app.event("message")(_dm_message_callback)
+        # @self._transport.slack_app.event("message")
+        # def _dm_message_callback(client, message):
+        #     print(f"[message] {message}")
+        #     self._handle_dm_cmd(client, message)
 
     def run(self) -> None:
         self._scheduler.start()
         self._transport.start()
 
     def _handle_team_join(self, client: WebClient, event: dict):
-        logger.debug("Processing event: %s", event)
+        logger.info("Processing event: %s", event)
         user_id = event["user"]["id"]
         self._transport.post_im(user_id, self._format.hello())
         logger.info("Team joined by user_id=%s", user_id)
 
     def _handle_app_mention(self, client: WebClient, event: dict) -> None:
-        logger.debug("Processing event: %s", event)
+        logger.info("Processing event: %s", event)
 
         event_fields = set(event.keys())
         if not REQUIRED_MESSAGE_FIELDS.issubset(event_fields):
-            logger.debug("Not enough fields for: %s", event)
+            logger.info("Not enough fields for: %s", event)
             return
 
         initiator_id = event["user"]
@@ -90,15 +90,40 @@ class Karmabot:
 
         # Don't handle requests from private channels (aka groups)
         if channel.startswith("G"):
-            logger.debug("Skip message in group %s", channel)
+            logger.info("Skip message in group %s", channel)
             return
 
         # Handle only messages with `@karmabot` at the beginning
         user_id = Parse.user_mention(text)
         if not user_id or not self._is_me(user_id):
-            logger.debug("Skip message not for bot: %s", text)
+            logger.info("Skip message not for bot: %s", text)
             return
-        self._manager.create(initiator_id, channel, text, ts)
+
+        # Report an error if a request has not been parsed
+        result = Parse.karma_change(text)
+        if not result:
+            self._transport.post(channel, self._format.parsing_error(), ts=ts)
+            return
+
+        bot_id, user_id, karma = result
+        error = self._karma_change_sanity_check(initiator_id, user_id, bot_id, karma)
+        if error:
+            self._transport.post(channel, error, ts=ts)
+            return
+
+        username = self._transport.lookup_username(user_id)
+        msg = self._format.new_voting(username, karma)
+        response = self._transport.post(channel, msg, ts=ts)
+        bot_message_ts = response["ts"]
+        self._manager.create(
+            initiator_id=initiator_id,
+            target_id=user_id,
+            channel=channel,
+            text=text,
+            ts=ts,
+            bot_message_ts=bot_message_ts,
+            karma=karma,
+        )
 
     def _handle_dm_cmd(self, client: WebClient, event: dict) -> None:
         initiator_id = event["user"]
@@ -206,6 +231,17 @@ class Karmabot:
             minute="*",
             replace_existing=True,
         )
+
+    def _karma_change_sanity_check(
+        self, initiator_id: str, user_id: str, bot_id: str, karma: int
+    ) -> dict | None:
+        if not self._config.karma.self_karma and initiator_id == user_id:
+            return self._format.strange_error()
+        if user_id == bot_id:
+            return self._format.robo_error()
+        if abs(karma) > self._config.karma.max_diff:
+            return self._format.max_diff_error(self._config.karma.max_diff)
+        return None
 
 
 def _create_scheduler(url: str):
