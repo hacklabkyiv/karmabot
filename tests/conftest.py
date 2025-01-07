@@ -1,12 +1,8 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from karmabot.config import KarmabotConfig
 from karmabot.karma_manager import KarmaManager
 from karmabot.orm import Karma, create_session_maker
-from karmabot.transport import Transport
-from karmabot.words import Format
 
 
 @pytest.fixture(scope="session")
@@ -71,11 +67,6 @@ def new_session_maker(config: KarmabotConfig, sample_karma: dict):
 def km(
     new_session_maker, config: KarmabotConfig, test_username: str, test_msg: str
 ) -> KarmaManager:
-    transport = MagicMock(spec=Transport)
-    transport.lookup_username.return_value = test_username
-    transport.post.return_value = {"ts": "123.000000"}
-    fmt = MagicMock(spec=Format)
-    fmt.report_karma.return_value = test_msg
-    km = KarmaManager(config, transport, fmt)
+    km = KarmaManager(config)
     km._session_maker = new_session_maker
     return km

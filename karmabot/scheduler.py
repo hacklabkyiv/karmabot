@@ -73,18 +73,7 @@ def monthly_digest_job(config_path: pathlib.Path) -> None:
     with config_path.open("r") as f:
         config_dict = yaml.safe_load(f)
     config = KarmabotConfig.model_validate(config_dict)
-    transport = Transport(config)
-    format = Format(
-        lang=config.lang,
-        votes_up_emoji=config.karma.upvote_emoji,
-        votes_down_emoji=config.karma.downvote_emoji,
-        timeout=config.karma.vote_timeout,
-    )
-    manager = KarmaManager(
-        config=config,
-        transport=transport,
-        fmt=format,
-    )
+    manager = KarmaManager(config=config)
     manager.digest()
 
 
@@ -94,18 +83,25 @@ def voting_maintenance_job(config_path: pathlib.Path) -> None:
         config_dict = yaml.safe_load(f)
     config = KarmabotConfig.model_validate(config_dict)
     transport = Transport(config)
-    format = Format(
+    _format = Format(
         lang=config.lang,
         votes_up_emoji=config.karma.upvote_emoji,
         votes_down_emoji=config.karma.downvote_emoji,
         timeout=config.karma.vote_timeout,
     )
-    manager = KarmaManager(
-        config=config,
-        transport=transport,
-        fmt=format,
-    )
-    manager.close_expired_votings()
+    manager = KarmaManager(config=config)
+    for voting in manager.get_expired_votings():
+        logger.info("Expired voting: %s", voting)
+        reactions = transport.reactions_get(
+            channel=voting.channel,
+            initial_msg_ts=voting.message_ts,
+            bot_msg_ts=voting.bot_message_ts,
+        )
+        success = manager.close_voting(voting, reactions)
+        username = transport.lookup_username(voting.target_id)
+        result = _format.voting_result(username, voting.karma, success)
+        transport.update(voting.channel, result, voting.bot_message_ts)
+
     manager.remove_old_votings()
 
 
