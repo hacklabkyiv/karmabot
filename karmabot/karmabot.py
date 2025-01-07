@@ -9,7 +9,7 @@ from .config import KarmabotConfig
 from .karma_manager import KarmaManager
 from .logging import logger
 from .parse import Parse
-from .scheduler import create_scheduler, monthly_digest_func, voting_maintenance_func
+from .scheduler import KarmabotScheduler
 from .transport import Transport
 from .words import Color, Format
 
@@ -29,7 +29,6 @@ class Karmabot:
         with config_path.open("r") as f:
             config_dict = yaml.safe_load(f)
         self._config = KarmabotConfig.model_validate(config_dict)
-        self._scheduler = create_scheduler(self._config.db)
         self._admins = self._config.admins
         self._transport = Transport(self._config)
         self._format = Format(
@@ -43,10 +42,9 @@ class Karmabot:
             transport=self._transport,
             fmt=self._format,
         )
+        self._scheduler = KarmabotScheduler(config_path)
 
         self._commands = self._init_commands()
-        self._init_monthly_digest(config_path)
-        self._init_voting_maintenance(config_path)
 
         @self._transport.slack_app.event("team_join")
         def _team_join_callback(client, event):
@@ -127,6 +125,7 @@ class Karmabot:
         initiator_id = event["user"]
         channel = event["channel"]
         text = event["text"]
+        is_admin = self._is_admin(initiator_id)
 
         # Handling only DM messages and skipping own messages
         if not channel.startswith("D") or self._is_me(initiator_id):
@@ -143,7 +142,7 @@ class Karmabot:
             elif not isinstance(args, list):
                 args = [args]
 
-            if cmd.admin_only and not self._is_admin(initiator_id):
+            if cmd.admin_only and not is_admin:
                 # Command matched, but permissions are wrong
                 return
 
@@ -198,37 +197,6 @@ class Karmabot:
                 admin_only=False,
             ),
         ]
-
-    def _init_monthly_digest(self, config_path: pathlib.Path) -> None:
-        if self._config.digest.day <= 0:
-            logger.warning("Failed to configure the montly digest: a day is less than 0")
-            return
-        if self._config.digest.day > 28:
-            logger.warning("Failed to configure the montly digest: a day is greater than 28")
-        if not self._transport.channel_exists(self._config.digest.channel):
-            logger.warning(
-                "Failed to configure the montly digest: channel [%s] not found",
-                self._config.digest.channel,
-            )
-            return
-        self._scheduler.add_job(
-            monthly_digest_func,
-            kwargs=dict(config_path=config_path),
-            id="monthly_digest",
-            trigger="cron",
-            day=self._config.digest.day,
-            replace_existing=True,
-        )
-
-    def _init_voting_maintenance(self, config_path: pathlib.Path) -> None:
-        self._scheduler.add_job(
-            voting_maintenance_func,
-            kwargs=dict(config_path=config_path),
-            id="voting_maintenance",
-            trigger="cron",
-            minute="*",
-            replace_existing=True,
-        )
 
     def _karma_change_sanity_check(
         self, initiator_id: str, user_id: str, bot_id: str, karma: int
