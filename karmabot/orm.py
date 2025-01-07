@@ -1,8 +1,8 @@
-from datetime import datetime
+import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, create_engine
+import sqlalchemy as sa
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 
 class OrmBase(DeclarativeBase):
@@ -10,7 +10,7 @@ class OrmBase(DeclarativeBase):
 
 
 def create_session_maker(db_uri: str):
-    engine = create_engine(db_uri)
+    engine = sa.create_engine(db_uri)
     OrmBase.metadata.create_all(engine, checkfirst=True)
     Session = sessionmaker(bind=engine)
     return Session
@@ -19,9 +19,9 @@ def create_session_maker(db_uri: str):
 class Karma(OrmBase):
     __tablename__ = "karmabot_karma"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(String(256), unique=True, nullable=False)
-    karma = Column(Integer, nullable=False)
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(sa.String(256), unique=True, nullable=False)
+    karma: Mapped[int] = mapped_column(sa.Integer, nullable=False)
 
     def __repr__(self):
         return f"<Karma(user_id={self.user_id}, karma={self.karma})>"
@@ -30,16 +30,18 @@ class Karma(OrmBase):
 class Voting(OrmBase):
     __tablename__ = "karmabot_voting"
 
-    id = Column(Integer, primary_key=True)
-    created = Column(DateTime, nullable=False, default=datetime.now())
-    closed = Column(Boolean, nullable=False, default=False)
-    initiator_id = Column(String(256), nullable=False)
-    target_id = Column(String(256), nullable=False)
-    channel = Column(String(256), nullable=False)
-    message_ts = Column(String, nullable=False)
-    bot_message_ts = Column(String, nullable=False)
-    message_text = Column(Text, nullable=False)
-    karma = Column(Integer, nullable=False)
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
+    created: Mapped[datetime.datetime] = mapped_column(
+        sa.DateTime, nullable=False, default=sa.func.now()
+    )
+    closed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    initiator_id: Mapped[str] = mapped_column(sa.String(256), nullable=False)
+    target_id: Mapped[str] = mapped_column(sa.String(256), nullable=False)
+    channel: Mapped[str] = mapped_column(sa.String(256), nullable=False)
+    message_ts: Mapped[str] = mapped_column(sa.String, nullable=False)
+    bot_message_ts: Mapped[str] = mapped_column(sa.String, nullable=False)
+    message_text: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    karma: Mapped[int] = mapped_column(sa.Integer, nullable=False)
 
     @hybrid_property
     def uuid(self):
