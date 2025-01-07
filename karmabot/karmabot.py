@@ -1,6 +1,6 @@
+import datetime
 import pathlib
-from dataclasses import dataclass
-from typing import Any
+from collections.abc import Callable
 
 import yaml
 from slack_sdk.web import WebClient
@@ -16,14 +16,6 @@ from .words import Color, Format
 REQUIRED_MESSAGE_FIELDS = {"user", "text", "ts", "type", "channel"}
 
 
-@dataclass
-class Command:
-    name: str
-    parser: Any
-    executor: Any
-    admin_only: bool
-
-
 class Karmabot:
     def __init__(self, config_path: pathlib.Path) -> None:
         with config_path.open("r") as f:
@@ -37,14 +29,8 @@ class Karmabot:
             votes_down_emoji=self._config.karma.downvote_emoji,
             timeout=self._config.karma.vote_timeout,
         )
-        self._manager = KarmaManager(
-            config=self._config,
-            transport=self._transport,
-            fmt=self._format,
-        )
+        self._manager = KarmaManager(config=self._config)
         self._scheduler = KarmabotScheduler(config_path)
-
-        self._commands = self._init_commands()
 
         @self._transport.slack_app.event("team_join")
         def _team_join_callback(client, event):
@@ -56,10 +42,10 @@ class Karmabot:
             print(f"[app_mention] {event}")
             self._handle_app_mention(client, event)
 
-        # @self._transport.slack_app.event("message")
-        # def _dm_message_callback(client, message):
-        #     print(f"[message] {message}")
-        #     self._handle_dm_cmd(client, message)
+        @self._transport.slack_app.command("/karmabot")
+        def _command_callback(ack: Callable, respond: Callable, command: dict):
+            print(f"[command] {command}")
+            self._handle_command(ack, respond, command)
 
     def run(self) -> None:
         self._scheduler.start()
@@ -121,82 +107,69 @@ class Karmabot:
             karma=karma,
         )
 
-    def _handle_dm_cmd(self, client: WebClient, event: dict) -> None:
-        initiator_id = event["user"]
-        channel = event["channel"]
-        text = event["text"]
+    def _handle_command(self, ack: Callable, respond: Callable, command: dict) -> None:
+        initiator_id = command["user"]
+        channel = command["channel"]
+        text = command["text"]
         is_admin = self._is_admin(initiator_id)
 
         # Handling only DM messages and skipping own messages
         if not channel.startswith("D") or self._is_me(initiator_id):
             return
 
-        for cmd in self._commands:
-            args = cmd.parser(text)
-            if not args:
-                # Command don't match
-                continue
-
-            if isinstance(args, bool):
-                args = []
-            elif not isinstance(args, list):
-                args = [args]
-
-            if cmd.admin_only and not is_admin:
-                # Command matched, but permissions are wrong
+        if user_id := Parse.cmd_get(text):
+            karma = self._manager.get(user_id)
+            username = self._transport.lookup_username(user_id)
+            self._transport.post(channel, self._format.report_karma(username, karma))
+        elif args := Parse.cmd_set(text):
+            if not is_admin:
+                logger.warning("Only admins can set the karma")
                 return
+            user_id, karma = args
+            self._manager.set(user_id=user_id, karma=karma)
+            username = self._transport.lookup_username(user_id)
+            self._transport.post(channel, self._format.report_karma(username, karma))
+        elif Parse.cmd_digest(text):
+            result = ["*username* => *karma*"]
+            for r in self._manager.digest():
+                username = self._transport.lookup_username(r.user_id)
+                item = f"_{username}_ => *{r.karma}*"
+                result.append(item)
+            # TODO: add translations
+            if len(result) == 1:
+                message = "Seems like nothing to show. All the karma is zero"
+            else:
+                message = "\n".join(result)
+            self._transport.post(
+                self._config.digest.channel, self._format.message(Color.INFO, message)
+            )
+        elif Parse.cmd_pending(text):
+            result = ["*initiator* | *receiver* | *channel* | *karma* | *expired*"]
+            for voting in self._manager.pending():
+                dt = self._config.karma.vote_timeout
+                time_left = datetime.datetime.fromtimestamp(float(voting.message_ts)) + dt
+                initiator = self._transport.lookup_username(voting.initiator_id)
+                target = self._transport.lookup_username(voting.target_id)
+                channel_name = self._transport.lookup_channel_name(voting.channel)
+                item = f"{initiator} | {target} | {channel_name} | {voting.karma} | {time_left.isoformat()}"
+                result.append(item)
+            # TODO: add translations
+            if len(result) == 1:
+                message = "Seems like nothing to show"
+            else:
+                message = "\n".join(result)
+            self._transport.post(channel, self._format.message(Color.INFO, message))
+        elif Parse.cmd_help(text):
+            self._transport.post(channel, self._format.hello())
 
-            cmd.executor(*args, channel=channel)
-            return
-
+        # A default behavior is to error
         self._transport.post(channel, self._format.cmd_error())
-
-    def _help(self, channel: str) -> None:
-        self._transport.post(channel, self._format.hello())
-
-    def _get_config(self, channel: str) -> None:
-        message = self._config.model_dump_json(exclude={"slack_bot_token", "slack_app_token"})
-        self._transport.post(channel, Format.message(Color.INFO, message))
 
     def _is_admin(self, initiator_id: str) -> bool:
         return self._transport.lookup_username(initiator_id) in self._admins
 
     def _is_me(self, initiator_id: str) -> bool:
         return self._transport.lookup_username(initiator_id) == "karmabot"
-
-    def _init_commands(self) -> list[Command]:
-        return [
-            Command(
-                name="get",
-                parser=Parse.cmd_get,
-                executor=self._manager.get,
-                admin_only=False,
-            ),
-            Command(
-                name="set",
-                parser=Parse.cmd_set,
-                executor=self._manager.set,
-                admin_only=True,
-            ),
-            Command(
-                name="digest",
-                parser=Parse.cmd_digest,
-                executor=self._manager.digest,
-                admin_only=False,
-            ),
-            Command(
-                name="config",
-                parser=Parse.cmd_config,
-                executor=self._get_config,
-                admin_only=True,
-            ),
-            Command(
-                name="help",
-                parser=Parse.cmd_help,
-                executor=self._help,
-                admin_only=False,
-            ),
-        ]
 
     def _karma_change_sanity_check(
         self, initiator_id: str, user_id: str, bot_id: str, karma: int

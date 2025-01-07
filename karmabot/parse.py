@@ -43,8 +43,8 @@ class Parse:
         return text.strip() == "digest"
 
     @staticmethod
-    def cmd_config(text: str) -> bool:
-        return text.strip() == "config"
+    def cmd_pending(text: str) -> bool:
+        return text.strip() == "pending"
 
     @staticmethod
     def cmd_help(text: str) -> bool:
