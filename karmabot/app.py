@@ -6,6 +6,7 @@ import pathlib
 import click
 
 from .karmabot import Karmabot
+from .scheduler import KarmabotScheduler
 
 CONFIG_FILE_NAME = "config.yml"
 DEFAULT_CONFIG_PATH = str(pathlib.Path.home() / ".config" / "karmabot" / CONFIG_FILE_NAME)
@@ -17,6 +18,8 @@ def cli_app(config: str):
     config_path = pathlib.Path(config)
     if not config_path.exists():
         raise click.FileError(config, "Can't locate a config file")
+    scheduler = KarmabotScheduler(config_path)
+    scheduler.start()
     bot = Karmabot(config_path)
     bot.run()
 

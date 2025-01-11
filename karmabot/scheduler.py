@@ -18,15 +18,11 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from slack_bolt import App
 
 from .config import KarmabotConfig
-from .karma_manager import KarmaManager
+from .karmabot import Karmabot
 from .logging import logger
 from .slack_utils import (
     channel_exists,
-    lookup_username,
-    message_update,
-    reactions_get,
 )
-from .words import Format
 
 
 class KarmabotScheduler:
@@ -34,7 +30,6 @@ class KarmabotScheduler:
         with config_path.open("r") as f:
             config_dict = yaml.safe_load(f)
         self._config = KarmabotConfig.model_validate(config_dict)
-        self.slack_app = App(token=self._config.slack_bot_token)
         self._scheduler = create_scheduler(self._config.db)
         self._init_monthly_digest(config_path)
         self._init_voting_maintenance(config_path)
@@ -48,7 +43,8 @@ class KarmabotScheduler:
             return
         if self._config.digest.day > 28:
             logger.warning("Failed to configure the montly digest: a day is greater than 28")
-        if not channel_exists(self.slack_app.client, self._config.digest.channel):
+        slack_app = App(token=self._config.slack_bot_token, logger=logger)
+        if not channel_exists(slack_app.client, self._config.digest.channel):
             logger.warning(
                 "Failed to configure the montly digest: channel [%s] not found",
                 self._config.digest.channel,
@@ -76,40 +72,14 @@ class KarmabotScheduler:
 
 def monthly_digest_job(config_path: pathlib.Path) -> None:
     """Montly digest job entry point."""
-    with config_path.open("r") as f:
-        config_dict = yaml.safe_load(f)
-    config = KarmabotConfig.model_validate(config_dict)
-    manager = KarmaManager(config=config)
-    manager.digest()
+    karmabot = Karmabot(config_path)
+    karmabot.report_digest()
 
 
 def voting_maintenance_job(config_path: pathlib.Path) -> None:
     """Close expired and delete outdated votings job entry point."""
-    with config_path.open("r") as f:
-        config_dict = yaml.safe_load(f)
-    config = KarmabotConfig.model_validate(config_dict)
-    slack_app = App(token=config.slack_bot_token)
-    _format = Format(
-        lang=config.lang,
-        votes_up_emoji=config.karma.upvote_emoji,
-        votes_down_emoji=config.karma.downvote_emoji,
-        timeout=config.karma.vote_timeout,
-    )
-    manager = KarmaManager(config=config)
-    for voting in manager.get_expired_votings():
-        logger.info("Expired voting: %s", voting)
-        reactions = reactions_get(
-            client=slack_app.client,
-            channel=voting.channel,
-            initial_msg_ts=voting.message_ts,
-            bot_msg_ts=voting.bot_message_ts,
-        )
-        success = manager.close_voting(voting, reactions)
-        username = lookup_username(slack_app.client, voting.target_id)
-        result = _format.voting_result(username, voting.karma, success)
-        message_update(slack_app.client, voting.channel, result, voting.bot_message_ts)
-
-    manager.remove_old_votings()
+    karmabot = Karmabot(config_path)
+    karmabot.process_expired_votings()
 
 
 def create_scheduler(url: str):
