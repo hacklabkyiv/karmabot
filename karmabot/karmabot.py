@@ -3,6 +3,8 @@ import pathlib
 from collections.abc import Callable
 
 import yaml
+from slack_bolt import App
+from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk.web import WebClient
 
 from .config import KarmabotConfig
@@ -10,7 +12,12 @@ from .karma_manager import KarmaManager
 from .logging import logger
 from .parse import Parse
 from .scheduler import KarmabotScheduler
-from .transport import Transport
+from .slack_utils import (
+    lookup_channel_name,
+    lookup_username,
+    message_post,
+    post_im,
+)
 from .words import Color, Format
 
 REQUIRED_MESSAGE_FIELDS = {"user", "text", "ts", "type", "channel"}
@@ -21,8 +28,8 @@ class Karmabot:
         with config_path.open("r") as f:
             config_dict = yaml.safe_load(f)
         self._config = KarmabotConfig.model_validate(config_dict)
+        self.slack_app = App(token=self._config.slack_bot_token)
         self._admins = self._config.admins
-        self._transport = Transport(self._config)
         self._format = Format(
             lang=self._config.lang,
             votes_up_emoji=self._config.karma.upvote_emoji,
@@ -32,29 +39,29 @@ class Karmabot:
         self._manager = KarmaManager(config=self._config)
         self._scheduler = KarmabotScheduler(config_path)
 
-        @self._transport.slack_app.event("team_join")
+        @self.slack_app.event("team_join")
         def _team_join_callback(client, event):
             print(f"[team_join] {event}")
             self._handle_team_join(client, event)
 
-        @self._transport.slack_app.event("app_mention")
+        @self.slack_app.event("app_mention")
         def _app_mention_callback(client, event):
             print(f"[app_mention] {event}")
             self._handle_app_mention(client, event)
 
-        @self._transport.slack_app.command("/karmabot")
+        @self.slack_app.command("/karmabot")
         def _command_callback(ack: Callable, respond: Callable, command: dict):
             print(f"[command] {command}")
             self._handle_command(ack, respond, command)
 
     def run(self) -> None:
         self._scheduler.start()
-        self._transport.start()
+        SocketModeHandler(self.slack_app, self._config.slack_app_token).start()
 
     def _handle_team_join(self, client: WebClient, event: dict):
         logger.info("Processing event: %s", event)
         user_id = event["user"]["id"]
-        self._transport.post_im(user_id, self._format.hello())
+        post_im(self.slack_app.client, user_id, self._format.hello())
         logger.info("Team joined by user_id=%s", user_id)
 
     def _handle_app_mention(self, client: WebClient, event: dict) -> None:
@@ -84,18 +91,18 @@ class Karmabot:
         # Report an error if a request has not been parsed
         result = Parse.karma_change(text)
         if not result:
-            self._transport.post(channel, self._format.parsing_error(), ts=ts)
+            message_post(self.slack_app.client, channel, self._format.parsing_error(), ts=ts)
             return
 
         bot_id, user_id, karma = result
         error = self._karma_change_sanity_check(initiator_id, user_id, bot_id, karma)
         if error:
-            self._transport.post(channel, error, ts=ts)
+            message_post(self.slack_app.client, channel, error, ts=ts)
             return
 
-        username = self._transport.lookup_username(user_id)
+        username = lookup_username(self.slack_app.client, user_id)
         msg = self._format.new_voting(username, karma)
-        response = self._transport.post(channel, msg, ts=ts)
+        response = message_post(self.slack_app.client, channel, msg, ts=ts)
         bot_message_ts = response["ts"]
         self._manager.create(
             initiator_id=initiator_id,
@@ -119,20 +126,24 @@ class Karmabot:
 
         if user_id := Parse.cmd_get(text):
             karma = self._manager.get(user_id)
-            username = self._transport.lookup_username(user_id)
-            self._transport.post(channel, self._format.report_karma(username, karma))
+            username = lookup_username(self.slack_app.client, user_id)
+            message_post(
+                self.slack_app.client, channel, self._format.report_karma(username, karma)
+            )
         elif args := Parse.cmd_set(text):
             if not is_admin:
                 logger.warning("Only admins can set the karma")
                 return
             user_id, karma = args
             self._manager.set(user_id=user_id, karma=karma)
-            username = self._transport.lookup_username(user_id)
-            self._transport.post(channel, self._format.report_karma(username, karma))
+            username = lookup_username(self.slack_app.client, user_id)
+            message_post(
+                self.slack_app.client, channel, self._format.report_karma(username, karma)
+            )
         elif Parse.cmd_digest(text):
             result = ["*username* => *karma*"]
             for r in self._manager.digest():
-                username = self._transport.lookup_username(r.user_id)
+                username = lookup_username(self.slack_app.client, r.user_id)
                 item = f"_{username}_ => *{r.karma}*"
                 result.append(item)
             # TODO: add translations
@@ -140,17 +151,19 @@ class Karmabot:
                 message = "Seems like nothing to show. All the karma is zero"
             else:
                 message = "\n".join(result)
-            self._transport.post(
-                self._config.digest.channel, self._format.message(Color.INFO, message)
+            message_post(
+                self.slack_app.client,
+                self._config.digest.channel,
+                self._format.message(Color.INFO, message),
             )
         elif Parse.cmd_pending(text):
             result = ["*initiator* | *receiver* | *channel* | *karma* | *expired*"]
             for voting in self._manager.pending():
                 dt = self._config.karma.vote_timeout
                 time_left = datetime.datetime.fromtimestamp(float(voting.message_ts)) + dt
-                initiator = self._transport.lookup_username(voting.initiator_id)
-                target = self._transport.lookup_username(voting.target_id)
-                channel_name = self._transport.lookup_channel_name(voting.channel)
+                initiator = lookup_username(self.slack_app.client, voting.initiator_id)
+                target = lookup_username(self.slack_app.client, voting.target_id)
+                channel_name = lookup_channel_name(self.slack_app.client, voting.channel)
                 item = f"{initiator} | {target} | {channel_name} | {voting.karma} | {time_left.isoformat()}"
                 result.append(item)
             # TODO: add translations
@@ -158,18 +171,18 @@ class Karmabot:
                 message = "Seems like nothing to show"
             else:
                 message = "\n".join(result)
-            self._transport.post(channel, self._format.message(Color.INFO, message))
+            message_post(self.slack_app.client, channel, self._format.message(Color.INFO, message))
         elif Parse.cmd_help(text):
-            self._transport.post(channel, self._format.hello())
+            message_post(self.slack_app.client, channel, self._format.hello())
 
         # A default behavior is to error
-        self._transport.post(channel, self._format.cmd_error())
+        message_post(self.slack_app.client, channel, self._format.cmd_error())
 
     def _is_admin(self, initiator_id: str) -> bool:
-        return self._transport.lookup_username(initiator_id) in self._admins
+        return lookup_username(self.slack_app.client, initiator_id) in self._admins
 
     def _is_me(self, initiator_id: str) -> bool:
-        return self._transport.lookup_username(initiator_id) == "karmabot"
+        return lookup_username(self.slack_app.client, initiator_id) == "karmabot"
 
     def _karma_change_sanity_check(
         self, initiator_id: str, user_id: str, bot_id: str, karma: int

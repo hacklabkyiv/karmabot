@@ -42,7 +42,7 @@ class Format:
         self._display_time = self.display_time(timeout.seconds)
 
     @staticmethod
-    def message(color, text: str, image: str | None = None) -> dict:
+    def message(color: str, text: str, image: str | None = None) -> dict:
         return {
             "attachments": [
                 {

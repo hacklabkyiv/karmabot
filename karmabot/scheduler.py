@@ -15,11 +15,17 @@ import yaml
 from apscheduler.executors.pool import ProcessPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
+from slack_bolt import App
 
 from .config import KarmabotConfig
 from .karma_manager import KarmaManager
 from .logging import logger
-from .transport import Transport
+from .slack_utils import (
+    channel_exists,
+    lookup_username,
+    message_update,
+    reactions_get,
+)
 from .words import Format
 
 
@@ -28,7 +34,7 @@ class KarmabotScheduler:
         with config_path.open("r") as f:
             config_dict = yaml.safe_load(f)
         self._config = KarmabotConfig.model_validate(config_dict)
-        self._transport = Transport(self._config)
+        self.slack_app = App(token=self._config.slack_bot_token)
         self._scheduler = create_scheduler(self._config.db)
         self._init_monthly_digest(config_path)
         self._init_voting_maintenance(config_path)
@@ -42,7 +48,7 @@ class KarmabotScheduler:
             return
         if self._config.digest.day > 28:
             logger.warning("Failed to configure the montly digest: a day is greater than 28")
-        if not self._transport.channel_exists(self._config.digest.channel):
+        if not channel_exists(self.slack_app.client, self._config.digest.channel):
             logger.warning(
                 "Failed to configure the montly digest: channel [%s] not found",
                 self._config.digest.channel,
@@ -82,7 +88,7 @@ def voting_maintenance_job(config_path: pathlib.Path) -> None:
     with config_path.open("r") as f:
         config_dict = yaml.safe_load(f)
     config = KarmabotConfig.model_validate(config_dict)
-    transport = Transport(config)
+    slack_app = App(token=config.slack_bot_token)
     _format = Format(
         lang=config.lang,
         votes_up_emoji=config.karma.upvote_emoji,
@@ -92,15 +98,16 @@ def voting_maintenance_job(config_path: pathlib.Path) -> None:
     manager = KarmaManager(config=config)
     for voting in manager.get_expired_votings():
         logger.info("Expired voting: %s", voting)
-        reactions = transport.reactions_get(
+        reactions = reactions_get(
+            client=slack_app.client,
             channel=voting.channel,
             initial_msg_ts=voting.message_ts,
             bot_msg_ts=voting.bot_message_ts,
         )
         success = manager.close_voting(voting, reactions)
-        username = transport.lookup_username(voting.target_id)
+        username = lookup_username(slack_app.client, voting.target_id)
         result = _format.voting_result(username, voting.karma, success)
-        transport.update(voting.channel, result, voting.bot_message_ts)
+        message_update(slack_app.client, voting.channel, result, voting.bot_message_ts)
 
     manager.remove_old_votings()
 
