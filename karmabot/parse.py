@@ -1,6 +1,6 @@
 import re
 
-REGEX_USER = "<@([A-Za-z]+[A-Za-z0-9-_]+)>"
+REGEX_USER = r"<@(\w+)(\|\w+)?>"
 REGEX_KARMA = r"([+]{1,}|[-]{1,})"
 
 
@@ -25,14 +25,15 @@ class Parse:
 
     @staticmethod
     def cmd_get(text: str) -> str | None:
-        r = re.match(f"get {REGEX_USER}", text)
+        r = re.match(rf"get\s+{REGEX_USER}", text)
         if not r:
             return None
-        return r[1]
+        user_id, _ = r.groups()
+        return user_id
 
     @staticmethod
     def cmd_set(text: str) -> tuple[str, int] | None:
-        r = re.match(f"set {REGEX_USER} ([-+]?[0-9]+)$", text)
+        r = re.match(rf"set\s+{REGEX_USER}\s([-+]?[0-9]+)$", text)
         if not r:
             return None
         user_id, karma = r.groups()
