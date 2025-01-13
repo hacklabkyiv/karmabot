@@ -1,5 +1,5 @@
 import datetime
-import logging
+import functools
 import pathlib
 from collections.abc import Callable
 
@@ -30,9 +30,7 @@ class Karmabot:
         with config_path.open("r") as f:
             config_dict = yaml.safe_load(f)
         self._config = KarmabotConfig.model_validate(config_dict)
-        log_level_str = self._config.log_level.upper()
-        log_level = logging.getLevelNamesMapping().get(log_level_str)
-        logger.setLevel(log_level)
+        logger.setLevel(self._config.log_level.upper())
         self.slack_app = App(token=self._config.slack_bot_token, logger=logger)
         self._admins = self._config.admins
         self._format = Format(
@@ -55,13 +53,14 @@ class Karmabot:
 
         @self.slack_app.command("/karma-test")
         def _command_callback(ack: Callable, respond: Callable, command: dict):
+            ack()
             logger.debug("[command] %s", command)
-            self._handle_command(ack, respond, command)
+            self._handle_command(respond, command)
 
     def run(self) -> None:
         SocketModeHandler(self.slack_app, self._config.slack_app_token).start()
 
-    def report_digest(self) -> None:
+    def report_digest(self, reply_callback: Callable | None = None) -> None:
         result = ["*username* => *karma*"]
         for r in self._manager.digest():
             username = lookup_username(self.slack_app.client, r.user_id)
@@ -72,11 +71,13 @@ class Karmabot:
             message = "Seems like nothing to show. All the karma is zero"
         else:
             message = "\n".join(result)
-        message_post(
-            self.slack_app.client,
-            self._config.digest.channel,
-            self._format.message(Color.INFO, message),
-        )
+        if reply_callback is None:
+            reply_callback = functools.partial(
+                message_post,
+                client=self.slack_app.client,
+                channel=self._config.digest.channel,
+            )
+        reply_callback(self._format.message(Color.INFO, message))
 
     def process_expired_votings(self) -> None:
         for voting in self._manager.get_expired_votings():
@@ -150,35 +151,35 @@ class Karmabot:
             karma=karma,
         )
 
-    def _handle_command(self, ack: Callable, respond: Callable, command: dict) -> None:
-        ack()
+    def _handle_command(self, respond: Callable, command: dict) -> None:
+        respond = functools.partial(respond, response_type="ephemeral")
         initiator_name = command["user_name"]
-        channel = command["channel_id"]
         text = command["text"]
         is_admin = initiator_name in self._admins
 
-        if user_id := Parse.cmd_get(text):
+        if get_args := Parse.cmd_get(text):
             logger.info("Handling command 'get'")
+            user_id, user_name = get_args
+            if not user_name:
+                logger.warning("Failed to parse 'get' command args")
+                return
             karma = self._manager.get(user_id)
-            username = lookup_username(self.slack_app.client, user_id)
-            message_post(
-                self.slack_app.client, channel, self._format.report_karma(username, karma)
-            )
-        elif args := Parse.cmd_set(text):
+            respond(self._format.report_karma(user_name, karma))
+        elif set_args := Parse.cmd_set(text):
             logger.info("Handling command 'set'")
             if not is_admin:
                 logger.warning("Only admins can set the karma")
                 return
-            user_id, karma = args
+            user_id, user_name, karma = set_args
+            if not user_name:
+                logger.warning("Failed to parse 'set' command args")
+                return
             self._manager.set(user_id=user_id, karma=karma)
-            username = lookup_username(self.slack_app.client, user_id)
-            message_post(
-                self.slack_app.client, channel, self._format.report_karma(username, karma)
-            )
-        elif Parse.cmd_digest(text):
+            respond(self._format.report_karma(user_name, karma))
+        elif text == "digest":
             logger.info("Handling command 'digest'")
-            self.report_digest()
-        elif Parse.cmd_pending(text):
+            self.report_digest(reply_callback=respond)
+        elif text == "pending":
             logger.info("Handling command 'pending'")
             result = ["*initiator* | *receiver* | *channel* | *karma* | *expired*"]
             for voting in self._manager.pending():
@@ -194,14 +195,14 @@ class Karmabot:
                 message = "Seems like nothing to show"
             else:
                 message = "\n".join(result)
-            message_post(self.slack_app.client, channel, self._format.message(Color.INFO, message))
-        elif Parse.cmd_help(text):
+            respond(self._format.message(Color.INFO, message))
+        elif text == "help":
             logger.info("Handling command 'help'")
-            message_post(self.slack_app.client, channel, self._format.hello())
+            respond(self._format.hello())
         else:
             # A default behavior is to error
             logger.info("Unknown command: %s", command["text"])
-            message_post(self.slack_app.client, channel, self._format.cmd_error())
+            respond(self._format.cmd_error())
 
     def _karma_change_sanity_check(
         self, initiator_id: str, user_id: str, bot_id: str, karma: int

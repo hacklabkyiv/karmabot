@@ -24,29 +24,19 @@ class Parse:
         return bot_id, user_id, plus or -minus
 
     @staticmethod
-    def cmd_get(text: str) -> str | None:
+    def cmd_get(text: str) -> tuple[str, str | None] | None:
         r = re.match(rf"get\s+{REGEX_USER}", text)
         if not r:
             return None
-        user_id, _ = r.groups()
-        return user_id
+        user_id, user_name = r.groups()
+        user_name = user_name.removeprefix("|") if user_name else None
+        return user_id, user_name
 
     @staticmethod
-    def cmd_set(text: str) -> tuple[str, int] | None:
+    def cmd_set(text: str) -> tuple[str, str | None, int] | None:
         r = re.match(rf"set\s+{REGEX_USER}\s([-+]?[0-9]+)$", text)
         if not r:
             return None
-        user_id, karma = r.groups()
-        return user_id, int(karma)
-
-    @staticmethod
-    def cmd_digest(text: str) -> bool:
-        return text.strip() == "digest"
-
-    @staticmethod
-    def cmd_pending(text: str) -> bool:
-        return text.strip() == "pending"
-
-    @staticmethod
-    def cmd_help(text: str) -> bool:
-        return text.strip() == "help"
+        user_id, user_name, karma = r.groups()
+        user_name = user_name.removeprefix("|") if user_name else None
+        return user_id, user_name, int(karma)
