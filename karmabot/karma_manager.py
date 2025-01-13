@@ -116,8 +116,8 @@ class KarmaManager:
                     )
                     session.add(new_record)
                 success = True
-                stmt = sa.update(Voting).where(Voting.id == voting.id).values(closed=True)
-            session.execute(stmt)
+                update_stmt = sa.update(Voting).where(Voting.id == voting.id).values(closed=True)
+            session.execute(update_stmt)
             session.commit()
         return success
 

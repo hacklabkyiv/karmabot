@@ -119,19 +119,13 @@ class Karmabot:
             logger.info("Skip message in group %s", channel)
             return
 
-        # Handle only messages with `@karmabot` at the beginning
-        user_id = Parse.user_mention(text)
-        if not user_id or not lookup_username(self.slack_app.client, user_id) == "karmabot":
-            logger.info("Skip message not for bot: %s", text)
-            return
-
         # Report an error if a request has not been parsed
         result = Parse.karma_change(text)
         if not result:
             message_post(self.slack_app.client, channel, self._format.parsing_error(), ts=ts)
             return
 
-        bot_id, user_id, karma = result
+        bot_id, user_id, karma, _ = result
         error = self._karma_change_sanity_check(initiator_id, user_id, bot_id, karma)
         if error:
             message_post(self.slack_app.client, channel, error, ts=ts)
