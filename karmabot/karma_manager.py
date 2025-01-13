@@ -18,8 +18,9 @@ class KarmaManager:
         self._session_maker = create_session_maker(config.db)
 
     def get(self, user_id: str) -> int:
+        stmt = sa.select(Karma).filter_by(user_id=user_id).limit(1)
         with self._session_maker() as session:
-            karma = session.execute(sa.select(Karma).filter_by(user_id=user_id).limit(1)).first()
+            karma = session.execute(stmt).first()
             if karma:
                 value = karma.karma
             else:
@@ -27,10 +28,9 @@ class KarmaManager:
         return value
 
     def set(self, user_id: str, karma: int) -> None:
+        stmt = sa.select(Karma).filter_by(user_id=user_id).limit(1)
         with self._session_maker() as session:
-            karma_change = session.execute(
-                sa.select(Karma).filter_by(user_id=user_id).limit(1)
-            ).first()
+            karma_change = session.execute(stmt).first()
             if karma_change:
                 karma_change.karma = karma
             else:
@@ -38,14 +38,14 @@ class KarmaManager:
             session.commit()
 
     def digest(self) -> list[Karma]:
+        stmt = sa.select(Karma).filter(Karma.karma != 0).order_by(Karma.karma.desc())
         with self._session_maker() as session:
-            return session.execute(
-                sa.select(Karma).filter(Karma.karma != 0).order_by(Karma.karma.desc())
-            ).all()
+            return session.execute(stmt).scalars().all()
 
     def pending(self) -> list[Voting]:
+        stmt = sa.select(Voting).filter(Voting.closed == False)
         with self._session_maker() as session:
-            return session.execute(sa.select(Voting).filter(Voting.closed == False)).all()
+            return session.execute(stmt).scalars().all()
 
     def create(
         self,
@@ -60,7 +60,8 @@ class KarmaManager:
     ) -> None:
         # Check for an already existing voting
         with self._session_maker() as session:
-            instance = session.execute(sa.select(Voting).filter_by(uuid=(ts, channel))).first()
+            stmt = sa.select(Voting).filter_by(uuid=(ts, channel))
+            instance = session.execute(stmt).first()
             if instance:
                 logger.fatal("Voting already exists: ts=%s, channel=%s", ts, channel)
                 return
@@ -81,22 +82,20 @@ class KarmaManager:
 
     def get_expired_votings(self) -> list[Voting]:
         now = datetime.now().timestamp()
+        stmt = sa.select(Voting).filter(
+            sa.cast(Voting.bot_message_ts, sa.Float) + self._vote_timeout < now
+        )
         with self._session_maker() as session:
-            return session.execute(
-                sa.select(Voting).filter(
-                    sa.cast(Voting.bot_message_ts, sa.Float) + self._vote_timeout < now
-                )
-            ).all()
+            return session.execute(stmt).scalars().all()
 
     def remove_old_votings(self) -> None:
         now = datetime.now()
+        stmt = sa.select(Voting).filter(
+            Voting.closed == True and (now - Voting.created) >= self._keep_history
+        )
         with self._session_maker() as session:
-            old = session.execute(
-                sa.select(Voting).filter(
-                    Voting.closed == True and (now - Voting.created) >= self._keep_history
-                )
-            )
-            for o in old.all():
+            old = session.execute(stmt).scalars().all()
+            for o in old:
                 session.delete(o)
             session.commit()
 
@@ -107,17 +106,18 @@ class KarmaManager:
                 logger.error("Failed to get messages for: %s", voting)
                 session.delete(voting)
             elif self._determine_success(reactions):
-                karma = session.execute(
-                    sa.select(Karma).filter_by(user_id=voting.target_id)
-                ).first()
+                stmt = sa.select(Karma).filter_by(user_id=voting.target_id)
+                karma = session.execute(stmt).first()
                 if karma:
                     karma.karma += voting.karma
                 else:
-                    session.add(
-                        Karma(user_id=voting.target_id, karma=self._initial_value + voting.karma)
+                    new_record = Karma(
+                        user_id=voting.target_id, karma=self._initial_value + voting.karma
                     )
+                    session.add(new_record)
                 success = True
-            session.execute(sa.update(Voting).where(Voting.id == voting.id).values(closed=True))
+                stmt = sa.update(Voting).where(Voting.id == voting.id).values(closed=True)
+            session.execute(stmt)
             session.commit()
         return success
 
