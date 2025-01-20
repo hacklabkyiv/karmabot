@@ -1,4 +1,5 @@
 import datetime
+from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -14,6 +15,23 @@ def create_session_maker(db_uri: str):
     OrmBase.metadata.create_all(engine, checkfirst=True)
     Session = sessionmaker(bind=engine)
     return Session
+
+
+class TimezoneAwereTimestamp(sa.TypeDecorator):
+    "Returns a timezone aware datetime objecto from UTC timestamp."
+
+    impl = sa.TIMESTAMP
+    cache_ok = True
+
+    def process_bind_param(self, value: Any | None, dialect: sa.Dialect):
+        if isinstance(value, datetime.datetime):
+            return value.astimezone(datetime.timezone.utc)
+        return value
+
+    def process_result_value(self, value: Any | None, dialect: sa.Dialect):
+        if isinstance(value, datetime.datetime):
+            return value.replace(tzinfo=datetime.timezone.utc)
+        return value
 
 
 class Karma(OrmBase):
@@ -32,17 +50,21 @@ class Voting(OrmBase):
 
     id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
     created: Mapped[datetime.datetime] = mapped_column(
-        sa.DateTime, nullable=False, default=sa.func.now()
+        TimezoneAwereTimestamp,
+        nullable=False,
+        default=lambda: datetime.datetime.now(tz=datetime.timezone.utc),
     )
     closed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     initiator_id: Mapped[str] = mapped_column(sa.String(256), nullable=False)
     target_id: Mapped[str] = mapped_column(sa.String(256), nullable=False)
     channel: Mapped[str] = mapped_column(sa.String(256), nullable=False)
-    message_ts: Mapped[str] = mapped_column(sa.String, nullable=False)
-    bot_message_ts: Mapped[str] = mapped_column(sa.String, nullable=False)
+    message_ts: Mapped[datetime.datetime] = mapped_column(TimezoneAwereTimestamp, nullable=False)
+    bot_message_ts: Mapped[datetime.datetime] = mapped_column(
+        TimezoneAwereTimestamp, nullable=False
+    )
     message_text: Mapped[str] = mapped_column(sa.Text, nullable=False)
     karma: Mapped[int] = mapped_column(sa.Integer, nullable=False)
 
     @hybrid_property
-    def uuid(self):
+    def uuid(self) -> tuple[datetime.datetime, str]:
         return self.message_ts, self.channel

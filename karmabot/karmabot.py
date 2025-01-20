@@ -1,4 +1,3 @@
-import datetime
 import functools
 import pathlib
 from collections.abc import Callable
@@ -80,18 +79,21 @@ class Karmabot:
         reply_callback(self._format.message(Color.INFO, message))
 
     def process_expired_votings(self) -> None:
+        logger.info("Looking for expired votings.")
         for voting in self._manager.get_expired_votings():
-            logger.info("Expired voting: %s", voting)
+            initial_msg_ts = str(voting.message_ts.timestamp())
+            bot_msg_ts = str(voting.bot_message_ts.timestamp())
+            logger.info("Expired voting: %s [%s] [%s]", voting, initial_msg_ts, bot_msg_ts)
             reactions = reactions_get(
                 client=self.slack_app.client,
                 channel=voting.channel,
-                initial_msg_ts=voting.message_ts,
-                bot_msg_ts=voting.bot_message_ts,
+                initial_msg_ts=initial_msg_ts,
+                bot_msg_ts=bot_msg_ts,
             )
             success = self._manager.close_voting(voting, reactions)
             username = lookup_username(self.slack_app.client, voting.target_id)
             result = self._format.voting_result(username, voting.karma, success)
-            message_update(self.slack_app.client, voting.channel, result, voting.bot_message_ts)
+            message_update(self.slack_app.client, voting.channel, result, ts=bot_msg_ts)
 
         self._manager.remove_old_votings()
 
@@ -178,7 +180,7 @@ class Karmabot:
             result = ["*initiator* | *receiver* | *channel* | *karma* | *expired*"]
             for voting in self._manager.pending():
                 dt = self._config.karma.vote_timeout
-                time_left = datetime.datetime.fromtimestamp(float(voting.message_ts)) + dt
+                time_left = voting.message_ts + dt
                 initiator = lookup_username(self.slack_app.client, voting.initiator_id)
                 target = lookup_username(self.slack_app.client, voting.target_id)
                 channel_name = lookup_channel_name(self.slack_app.client, voting.channel)

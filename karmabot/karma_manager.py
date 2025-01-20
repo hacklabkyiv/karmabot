@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 
 import sqlalchemy as sa
 
@@ -20,8 +20,8 @@ class KarmaManager:
     def get(self, user_id: str) -> int:
         stmt = sa.select(Karma).filter_by(user_id=user_id).limit(1)
         with self._session_maker() as session:
-            karma = session.execute(stmt).first()
-            if karma:
+            karma = session.execute(stmt).scalar_one_or_none()
+            if karma is not None:
                 value = karma.karma
             else:
                 value = self._initial_value
@@ -29,13 +29,12 @@ class KarmaManager:
 
     def set(self, user_id: str, karma: int) -> None:
         stmt = sa.select(Karma).filter_by(user_id=user_id).limit(1)
-        with self._session_maker() as session:
-            karma_change = session.execute(stmt).first()
-            if karma_change:
+        with self._session_maker.begin() as session:
+            karma_change = session.execute(stmt).scalar_one_or_none()
+            if karma_change is not None:
                 karma_change.karma = karma
             else:
                 session.add(Karma(user_id=user_id, karma=karma))
-            session.commit()
 
     def digest(self) -> list[Karma]:
         stmt = sa.select(Karma).filter(Karma.karma != 0).order_by(Karma.karma.desc())
@@ -58,57 +57,57 @@ class KarmaManager:
         bot_message_ts: str,
         karma: int,
     ) -> None:
-        # Check for an already existing voting
-        with self._session_maker() as session:
-            stmt = sa.select(Voting).filter_by(uuid=(ts, channel))
-            instance = session.execute(stmt).first()
-            if instance:
+        ts_dt = datetime.fromtimestamp(float(ts), tz=timezone.utc)
+        bot_message_ts_dt = datetime.fromtimestamp(float(bot_message_ts), tz=timezone.utc)
+        with self._session_maker.begin() as session:
+            # Check for an already existing voting
+            stmt = sa.select(Voting).filter_by(uuid=(ts_dt, channel))
+            instance = session.execute(stmt).scalar_one_or_none()
+            if instance is not None:
                 logger.fatal("Voting already exists: ts=%s, channel=%s", ts, channel)
                 return
 
             session.add(
                 Voting(
-                    created=datetime.now(),
                     initiator_id=initiator_id,
                     target_id=target_id,
                     channel=channel,
-                    message_ts=ts,
-                    bot_message_ts=bot_message_ts,
+                    message_ts=ts_dt,
+                    bot_message_ts=bot_message_ts_dt,
                     message_text=text,
                     karma=karma,
                 )
             )
-            session.commit()
 
     def get_expired_votings(self) -> list[Voting]:
-        now = datetime.now().timestamp()
-        stmt = sa.select(Voting).filter(
-            sa.cast(Voting.bot_message_ts, sa.Float) + self._vote_timeout < now
+        now = datetime.now(tz=timezone.utc)
+        filter_ = sa.and_(
+            Voting.closed == False,
+            Voting.bot_message_ts <= now - self._vote_timeout,
         )
+        stmt = sa.select(Voting).filter(filter_)
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()
 
     def remove_old_votings(self) -> None:
-        now = datetime.now()
-        stmt = sa.select(Voting).filter(
-            Voting.closed == True and (now - Voting.created) >= self._keep_history
-        )
-        with self._session_maker() as session:
+        now = datetime.now(tz=timezone.utc)
+        filter_ = sa.and_(Voting.closed == True, Voting.created <= now - self._keep_history)
+        stmt = sa.select(Voting).filter(filter_)
+        with self._session_maker.begin() as session:
             old = session.execute(stmt).scalars().all()
             for o in old:
                 session.delete(o)
-            session.commit()
 
     def close_voting(self, voting: Voting, reactions: Counter[str] | None = None) -> bool:
         success = False
-        with self._session_maker() as session:
+        with self._session_maker.begin() as session:
             if reactions is None:
                 logger.error("Failed to get messages for: %s", voting)
                 session.delete(voting)
             elif self._determine_success(reactions):
                 stmt = sa.select(Karma).filter_by(user_id=voting.target_id)
-                karma = session.execute(stmt).first()
-                if karma:
+                karma = session.execute(stmt).scalar_one_or_none()
+                if karma is not None:
                     karma.karma += voting.karma
                 else:
                     new_record = Karma(
@@ -117,8 +116,7 @@ class KarmaManager:
                     session.add(new_record)
                 success = True
                 update_stmt = sa.update(Voting).where(Voting.id == voting.id).values(closed=True)
-            session.execute(update_stmt)
-            session.commit()
+                session.execute(update_stmt)
         return success
 
     def _determine_success(self, reactions: Counter[str]) -> bool:

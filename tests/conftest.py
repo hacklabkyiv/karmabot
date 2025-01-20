@@ -1,8 +1,9 @@
 import pytest
+import sqlalchemy as sa
 
 from karmabot.config import KarmabotConfig
 from karmabot.karma_manager import KarmaManager
-from karmabot.orm import Karma, create_session_maker
+from karmabot.orm import Karma, Voting, create_session_maker
 
 
 @pytest.fixture(scope="session")
@@ -33,9 +34,11 @@ def test_msg() -> str:
 @pytest.fixture(scope="session")
 def config(test_channel: str) -> KarmabotConfig:
     config_dict = {
-        "db": "sqlite:///:memory:",
+        "db": "sqlite:///karmabot_test.db",
+        # TODO: spawn a postgres instance in docker
+        # "db": "postgresql://postgres:mysecretpassword@localhost:5432/postgres",
         "karma": {
-            "initial_value": 888,
+            "initial_value": 0,
             "upvote_emoji": ["+1"],
             "downvote_emoji": ["-1"],
             "vote_timeout": 0.1,
@@ -53,20 +56,25 @@ def config(test_channel: str) -> KarmabotConfig:
     return KarmabotConfig.model_validate(config_dict)
 
 
-@pytest.fixture
-def new_session_maker(config: KarmabotConfig, sample_karma: dict):
+@pytest.fixture(scope="function")
+def seed_sample_karma(config: KarmabotConfig, sample_karma: dict):
     session_class = create_session_maker(config.db)
-    with session_class() as s:
+    with session_class.begin() as s:
         for u, k in sample_karma.items():
             s.add(Karma(user_id=u, karma=k))
-        s.commit()
-    return session_class
+    yield
+    with session_class.begin() as s:
+        s.execute(sa.delete(Karma))
+
+
+@pytest.fixture(scope="function")
+def cleanup_voting_table(config: KarmabotConfig):
+    yield
+    session_class = create_session_maker(config.db)
+    with session_class.begin() as s:
+        s.execute(sa.delete(Voting))
 
 
 @pytest.fixture
-def km(
-    new_session_maker, config: KarmabotConfig, test_username: str, test_msg: str
-) -> KarmaManager:
-    km = KarmaManager(config)
-    km._session_maker = new_session_maker
-    return km
+def km(config: KarmabotConfig) -> KarmaManager:
+    return KarmaManager(config)
