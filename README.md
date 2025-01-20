@@ -121,6 +121,24 @@ In order to add support for a new language one runs
 msginit --no-translator -i lang/karmabot.pot -l uk_UA.UTF-8
 ```
 
+## Slack application configuration
+
+- Basic Information
+  - App-Level Tokens
+    - Create an app token (`config.slack_app_token`)
+- Socket Mode
+  - Enable Socket Mode
+  - Features affected
+    - Interactivity and Shortcuts
+      - Turn on
+    - Slash Commands
+      - Add `/karmabot`
+    - Enable Events
+      - Subscribe to bot events:
+        - app_mention
+        - message:channels
+        - team_join
+
 ## License
 
 see [./LICENSE](/LICENSE)

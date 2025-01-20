@@ -50,7 +50,7 @@ class Karmabot:
             logger.debug("[app_mention] %s", event)
             self._handle_app_mention(client, event)
 
-        @self.slack_app.command("/karma-test")
+        @self.slack_app.command("/karmabot")
         def _command_callback(ack: Callable, respond: Callable, command: dict):
             ack()
             logger.debug("[command] %s", command)
