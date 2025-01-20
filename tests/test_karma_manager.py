@@ -43,9 +43,7 @@ def test_digest(km: KarmaManager, sample_karma: dict[str, int]):
 
 
 @pytest.mark.usefixtures("cleanup_voting_table")
-def test_pending_print(
-    km: KarmaManager, config: KarmabotConfig, test_user: str, test_channel: str
-):
+def test_pending_print(km: KarmaManager, test_user: str, test_channel: str):
     message_ts = datetime.fromtimestamp(1.0, tz=timezone.utc)
     bot_message_ts = message_ts + timedelta(seconds=1)
     with km._session_maker.begin() as session:
@@ -111,7 +109,35 @@ def test_get_expired_votings(
     test_user: str,
     test_channel: str,
 ):
-    pass
+    message_ts = datetime.now(tz=timezone.utc) - config.karma.vote_timeout * 2
+    bot_message_ts = message_ts + config.karma.vote_timeout
+    with km._session_maker.begin() as session:
+        session.add(
+            Voting(
+                message_ts=message_ts,
+                bot_message_ts=bot_message_ts,
+                channel=test_channel,
+                target_id=test_user,
+                initiator_id=test_user,
+                karma=1,
+                message_text=f"@karmabot @{test_user} +",
+            )
+        )
+        session.add(
+            Voting(
+                closed=True,
+                message_ts=message_ts,
+                bot_message_ts=bot_message_ts,
+                channel=test_channel,
+                target_id=test_user,
+                initiator_id=test_user,
+                karma=1,
+                message_text=f"@karmabot @{test_user} +",
+            )
+        )
+    expired = km.get_expired_votings()
+    assert len(expired) == 1
+    assert expired[0].message_ts == message_ts
 
 
 def test_close_voting():
