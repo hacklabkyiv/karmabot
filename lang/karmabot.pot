@@ -67,7 +67,7 @@ msgstr ""
 
 #: words.py:43
 msgid "max_diff_error"
-msgstr "Max damage is {} karma"
+msgstr "Max change is {} karma"
 
 #: words.py:45
 msgid "strange_error"
