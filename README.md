@@ -109,16 +109,34 @@ All the commands should be sent into direct messages to **karmabot**.
 
 ## Translation
 
-Multi-language support in this project depends on `gettext`.
+Multi-language depends on `msginit` and `msgfmt` which are parts of `gettext` package.
 
 ```sh
 sudo apt-get install gettext
 ```
 
-In order to add support for a new language one runs
+A language system consists of:
+
+- a `.pot` file that is a template that defines all the available
+for translation phrases
+- a `.po` file for each language - a file with translations for a particular
+language
+- a `.mo` file - a binary representation of the `.po` file that is used in runtime
+
+The application uses `.mo` files in runtime so it's critical to update them
+upon editing `.po` files.
+
+
+### Add a new language
 
 ```sh
 msginit --no-translator -i lang/karmabot.pot -l uk_UA.UTF-8
+```
+
+### Update binaries (`*.mo` files) after modification of `*.po` files
+
+```sh
+msgfmt -o lang/<LANG>/LC_MESSAGES/messages.mo lang/<LANG>/LC_MESSAGES/messages.po
 ```
 
 ## Slack application configuration
