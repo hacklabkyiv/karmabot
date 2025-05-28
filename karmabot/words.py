@@ -30,7 +30,7 @@ class Format:
         votes_down_emoji: list[str],
         timeout: datetime.timedelta,
     ) -> None:
-        lang_resource = importlib.resources.files("lang")
+        lang_resource = importlib.resources.files("karmabot.lang")
         with importlib.resources.as_file(lang_resource) as dir_path:
             self._translation = gettext.translation(
                 domain="messages",

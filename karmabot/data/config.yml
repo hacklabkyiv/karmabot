@@ -18,7 +18,7 @@ karma:
   initial_value: 0
   max_diff: 5
   self_karma: yes
-  vote_timeout: 3H
+  vote_timeout: P0DT3H
   keep_history: P90DT
   upvote_emoji:
     - "+1"

@@ -7,9 +7,9 @@ license = "LICENSE"
 authors = ["Eugene <1511447+fa7ca7@users.noreply.github.com>"]
 package-mode = true
 include = [
-    "data/config.yml",
-    "lang/**/*.mo",
-    "lang/**/*.po",
+    "karmabot/data/config.yml",
+    "karmabot/lang/**/*.mo",
+    "karmabot/lang/**/*.po",
 ]
 
 [tool.poetry.dependencies]

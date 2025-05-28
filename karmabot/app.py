@@ -30,7 +30,7 @@ def cli_init(config: str):
     config_path = pathlib.Path(config)
     if config_path.exists():
         raise click.FileError(config, "The config file already exists")
-    data_resource = importlib.resources.files("data")
+    data_resource = importlib.resources.files("karmabot.data")
     with importlib.resources.as_file(data_resource) as dir_path:
         default_config_path = dir_path / CONFIG_FILE_NAME
         text = default_config_path.read_text()
