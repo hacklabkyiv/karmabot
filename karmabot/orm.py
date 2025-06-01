@@ -11,7 +11,7 @@ class OrmBase(DeclarativeBase):
 
 
 def create_session_maker(db_uri: str):
-    engine = sa.create_engine(db_uri)
+    engine = sa.create_engine(db_uri, connect_args={"options": "-c timezone=utc"})
     OrmBase.metadata.create_all(engine, checkfirst=True)
     Session = sessionmaker(bind=engine)
     return Session
