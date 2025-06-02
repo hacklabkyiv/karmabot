@@ -1,4 +1,3 @@
-import datetime
 import functools
 import pathlib
 from collections.abc import Callable
@@ -82,8 +81,8 @@ class Karmabot:
     def process_expired_votings(self) -> None:
         logger.info("Looking for expired votings.")
         for voting in self._manager.get_expired_votings():
-            initial_msg_ts = str(voting.message_ts.astimezone(datetime.timezone.utc).timestamp())
-            bot_msg_ts = str(voting.bot_message_ts.astimezone(datetime.timezone.utc).timestamp())
+            initial_msg_ts = str(voting.message_ts.timestamp())
+            bot_msg_ts = str(voting.bot_message_ts.timestamp())
             logger.info("Expired voting: %s [%s] [%s]", voting, initial_msg_ts, bot_msg_ts)
             reactions = reactions_get(
                 client=self.slack_app.client,
