@@ -20,7 +20,7 @@ This means that no karma will be applied unless community react using emoji.*
 ### pipx
 
 ```sh
-$ pipx install https://github.com/hacklabkyiv/karmabot
+$ pipx install git+https://github.com/hacklabkyiv/karmabot
 $ karmabot-init
 $ # update config at ~/.config/karmabot/config.yml
 $ karmabot
@@ -53,10 +53,11 @@ $ karmabot
 ### systemd
 
 ```sh
-$ pipx install https://github.com/hacklabkyiv/karmabot
+$ pipx install git+https://github.com/hacklabkyiv/karmabot
 $ karmabot-init
 $ # update config at ~/.config/karmabot/config.yml
 $ sudo wget https://raw.githubusercontent.com/hacklabkyiv/karmabot/refs/heads/main/systemd/karmabot.service -o /etc/systemd/system/karmabot.service
+$ # update .service at /etc/systemd/system/karmabot.service by your environment
 $ sudo systemctl start karmabot.service
 $ sudo systemctl enable karmabot.service
 ```

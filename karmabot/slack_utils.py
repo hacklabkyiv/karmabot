@@ -13,7 +13,7 @@ def lookup_username(client: WebClient, user_id: str) -> str:
 
 def lookup_channel_name(client: WebClient, channel_id: str) -> str:
     channel_id = channel_id.strip("<>@")
-    channel_info = client.channels_info(channel=channel_id)
+    channel_info = client.conversations_info(channel=channel_id)
     return channel_info["channel"]["name"]
 
 
