@@ -8,7 +8,11 @@ from .logging import logger
 def lookup_username(client: WebClient, user_id: str) -> str:
     user = user_id.strip("<>@")
     userinfo = client.users_info(user=user)
-    return userinfo["user"]["profile"]["display_name"]
+    profile = userinfo["user"]["profile"]
+    # A user may have some names set or may have no names at all.
+    # The only name the user always have is userinfo.user.name.
+    # `display_name` is preffered.
+    return profile.get("display_name") or profile.get("real_name") or userinfo["user"]["name"]
 
 
 def lookup_channel_name(client: WebClient, channel_id: str) -> str:

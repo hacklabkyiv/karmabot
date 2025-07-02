@@ -99,12 +99,13 @@ class KarmaManager:
                 session.delete(o)
 
     def close_voting(self, voting: Voting, reactions: Counter[str] | None = None) -> bool:
-        success = False
         with self._session_maker.begin() as session:
             if reactions is None:
                 logger.error("Failed to get messages for: %s", voting)
                 session.delete(voting)
-            elif self._determine_success(reactions):
+                return False
+            success = self._determine_success(reactions)
+            if success:
                 stmt = sa.select(Karma).filter_by(user_id=voting.target_id)
                 karma = session.execute(stmt).scalar_one_or_none()
                 if karma is not None:
@@ -114,10 +115,9 @@ class KarmaManager:
                         user_id=voting.target_id, karma=self._initial_value + voting.karma
                     )
                     session.add(new_record)
-                success = True
-                update_stmt = sa.update(Voting).where(Voting.id == voting.id).values(closed=True)
-                session.execute(update_stmt)
-        return success
+            update_stmt = sa.update(Voting).where(Voting.id == voting.id).values(closed=True)
+            session.execute(update_stmt)
+            return success
 
     def _determine_success(self, reactions: Counter[str]) -> bool:
         logger.info("Reactions: %s", reactions)
