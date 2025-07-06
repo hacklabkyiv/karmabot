@@ -73,8 +73,8 @@ class Karmabot:
         if reply_callback is None:
             reply_callback = functools.partial(
                 message_post,
-                client=self.slack_app.client,
-                channel=self._config.digest.channel,
+                self.slack_app.client,
+                self._config.digest.channel,
             )
         reply_callback(self._format.message(Color.INFO, message))
 
