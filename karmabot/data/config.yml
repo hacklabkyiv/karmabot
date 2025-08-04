@@ -13,6 +13,8 @@ db: postgresql://admin:qwerty@127.0.0.1:5432/mydb
 digest:
   channel: general
   day: 1
+  hour: 1
+  minute: 1
 
 karma:
   initial_value: 0

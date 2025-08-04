@@ -56,6 +56,8 @@ class KarmabotScheduler:
             id="monthly_digest",
             trigger="cron",
             day=self._config.digest.day,
+            hour=self._config.digest.hour,
+            minute=self._config.digest.minute,
             replace_existing=True,
         )
 
