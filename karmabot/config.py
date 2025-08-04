@@ -19,6 +19,8 @@ class KarmabotConfig(pydantic_settings.BaseSettings):
 class KarmabotDigestConfig(pydantic_settings.BaseSettings):
     channel: str
     day: int
+    hour: int
+    minute: int
 
 
 class KarmabotKarmaConfig(pydantic_settings.BaseSettings):
